@@ -3,7 +3,9 @@
 // 読み込み先シートは環境変数で指定（公開リポジトリにシートIDを残さないため）
 const SHEET_ID = import.meta.env.VITE_SHEET_ID;
 const GID = import.meta.env.VITE_SHEET_GID || '0';
-const COLUMNS = 'A,B,C,D,E,F,G,H,I,L,M,N,O,P,Q,R,S,T,U,V,W';
+// 公開用シート（仕入れ・1drink・Garden様価格の3列を除いた21列）が標準。
+// 原価列を含む元シートを読む場合（ローカル確認用）だけ VITE_SHEET_COLUMNS で列を指定する
+const COLUMNS = import.meta.env.VITE_SHEET_COLUMNS || 'A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U';
 
 export const SHEET_CONFIGURED = Boolean(SHEET_ID);
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}&headers=0&tq=${encodeURIComponent(`select ${COLUMNS}`)}`;
