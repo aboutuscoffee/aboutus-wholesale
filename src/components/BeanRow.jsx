@@ -1,11 +1,11 @@
 import BeanVisual from './BeanVisual';
 import { RankBadge, LabelBadges } from './Badges';
-import { mainPrice, yen } from '../i18n';
+import { yen } from '../i18n';
 
 // 一覧性重視の1行表示。PCでは表形式、スマホでは2段の詰めた行になる
 export const ROW_GRID = 'lg:grid lg:grid-cols-[52px_minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.6fr)_minmax(0,2fr)_72px_104px_92px] lg:items-center lg:gap-4';
 
-export function BeanRowHeader({ t, market }) {
+export function BeanRowHeader({ t }) {
   return (
     <div className={`hidden px-4 pb-2 text-[11px] uppercase tracking-wider text-ink-mute ${ROW_GRID}`}>
       <span />
@@ -14,15 +14,15 @@ export function BeanRowHeader({ t, market }) {
       <span>{t.process} / {t.roast}</span>
       <span>{t.flavor}</span>
       <span className="text-right">{t.stock}</span>
-      <span className="text-right">{market === 'overseas' ? t.overseas1kg : `${t.wholesale1kg}`}</span>
+      <span className="text-right">{t.wholesale1kg}</span>
       <span />
     </div>
   );
 }
 
-export default function BeanRow({ bean, media, t, market, onOpen, onQuickAdd, admin, onEdit }) {
+export default function BeanRow({ bean, media, t, onOpen, onQuickAdd, admin, onEdit }) {
   const soldOut = bean.stock.soldOut;
-  const price = mainPrice(bean, market);
+  const price = bean.wholesale;
   const origin = bean.isBlend ? 'Original Blend' : bean.country;
   const place = bean.isBlend ? bean.components.map((c) => c.origin).join(' / ') : bean.region;
 
@@ -70,7 +70,7 @@ export default function BeanRow({ bean, media, t, market, onOpen, onQuickAdd, ad
         </div>
         <div className="ml-auto text-right lg:ml-0">
           <div className="font-serif text-xl font-semibold leading-none text-ink">{yen(price)}</div>
-          <div className="mt-0.5 text-[10px] text-ink-mute">{market === 'overseas' ? '/kg' : `/kg ${t.exTax}`}</div>
+          <div className="mt-0.5 text-[10px] text-ink-mute">{`/kg ${t.exTax}`}</div>
         </div>
         <div className="flex flex-col items-end gap-1">
           <button

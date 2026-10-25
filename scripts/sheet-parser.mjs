@@ -1,23 +1,17 @@
-// 卸売リスト（Googleスプレッドシート）を元データとして読み込む。
-// 仕入れ(J)・1drink(K)・Garden様価格(X) は社外秘のため、取得クエリの時点で除外している。
-// 読み込み先シートは環境変数で指定（公開リポジトリにシートIDを残さないため）
-const SHEET_ID = import.meta.env.VITE_SHEET_ID;
-const GID = import.meta.env.VITE_SHEET_GID || '0';
-// 公開用シート（仕入れ・1drink・Garden様価格の3列を除いた21列）が標準。
-// 原価列を含む元シートを読む場合（ローカル確認用）だけ VITE_SHEET_COLUMNS で列を指定する
-const COLUMNS = import.meta.env.VITE_SHEET_COLUMNS || 'A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U';
+// 卸売リスト（Googleスプレッドシート）を解析して、アプリに登録する豆データにする。
+// 社外に見せるのはシート上で表示されている列（A〜I・S: 1kg Whole Sale・V: 400g By Strong Hold）だけなので、
+// 取得クエリの時点でそれ以外の列（原価・1drink・小分け・海外卸・生豆・Garden様価格）は読み込まない。
+const COLUMNS = 'A,B,C,D,E,F,G,H,I,S,V';
 
-export const SHEET_CONFIGURED = Boolean(SHEET_ID);
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}&headers=0&tq=${encodeURIComponent(`select ${COLUMNS}`)}`;
+export function sheetUrl(sheetId, gid) {
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}&headers=0&tq=${encodeURIComponent(`select ${COLUMNS}`)}`;
+}
 
 // select 後の列インデックス
 const C = {
   label: 0, card: 1, rank: 2, name: 3, process: 4, producer: 5, region: 6, altitude: 7, variety: 8,
-  g100: 9, g150: 10, g200: 11, g300: 12, g400: 13, g500: 14, kg1: 15,
-  wholesale: 16, overseas: 17, green: 18, sh400: 19, sh400os: 20,
+  wholesale: 9, sh400: 10,
 };
-
-export const SIZE_KEYS = ['g100', 'g150', 'g200', 'g300', 'g400', 'g500', 'kg1'];
 
 function parseCsv(text) {
   const rows = [];
@@ -40,7 +34,7 @@ function parseCsv(text) {
 }
 
 const clean = (s) => (s ?? '').replace(/\s*\n\s*/g, '\n').trim();
-const oneLine = (s) => clean(s).replace(/\n/g, ' ');
+const oneLine = (s) => clean(s).replace(/\s+/g, ' ');
 const yen = (s) => {
   const n = Number(String(s ?? '').replace(/[¥,\s]/g, ''));
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -79,9 +73,8 @@ function parseStock(raw) {
   return { text: s.replace(/\s+/g, ''), kg: Number.isFinite(n) ? n : null, soldOut: false };
 }
 
-export async function fetchSheet() {
-  if (!SHEET_CONFIGURED) return { beans: [], note: '', notConfigured: true };
-  const res = await fetch(SHEET_URL, { cache: 'no-store' });
+export async function fetchSheet(sheetId, gid) {
+  const res = await fetch(sheetUrl(sheetId, gid), { cache: 'no-store' });
   if (!res.ok) throw new Error(`Sheet ${res.status}`);
   return parseSheet(await res.text());
 }
@@ -117,12 +110,6 @@ export function parseSheet(text) {
     // 2行目が “〜” で始まる場合は商品名の続き（例: Signature Blend / “Happiness Bloom”）
     if (/^[“"]/.test(nameLines[1] ?? '')) nameLines.splice(0, 2, `${nameLines[0]} ${nameLines[1]}`);
     const price = (row, k) => yen(row[C[k]]);
-    const sizes = {};
-    const sizesTax = {};
-    for (const k of SIZE_KEYS) {
-      sizes[k] = price(r, k);
-      sizesTax[k] = price(sub, k);
-    }
 
     // ブレンドは「産地」列に構成国、精製も複数行
     const flavorRaw = clean(sget('producer')).replace(/^no dat[ae]$/i, '');
@@ -166,13 +153,8 @@ export function parseSheet(text) {
       flavor,
       flavorNotes: flavor.split(/,\s*/).map((s) => s.trim()).filter(Boolean),
       story,
-      sizes,
-      sizesTax,
       wholesale: price(r, 'wholesale'),
-      overseas: price(r, 'overseas'),
-      green: price(r, 'green'),
       sh400: price(r, 'sh400'),
-      sh400os: price(r, 'sh400os'),
     });
   }
   return { beans, note };

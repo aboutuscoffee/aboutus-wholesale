@@ -12,7 +12,7 @@ function loadForm() {
   }
 }
 
-export default function CartDrawer({ open, items, t, market, onClose, onQty, onRemove }) {
+export default function CartDrawer({ open, items, t, onClose, onQty, onRemove }) {
   const [form, setForm] = useState(loadForm);
   const [copied, setCopied] = useState(false);
 
@@ -30,19 +30,19 @@ export default function CartDrawer({ open, items, t, market, onClose, onQty, onR
   }, [open, onClose]);
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = market === 'overseas' ? 0 : Math.floor(subtotal * TAX_RATE);
+  const tax = Math.floor(subtotal * TAX_RATE);
   const total = subtotal + tax;
   const field = (k) => ({ value: form[k] ?? '', onChange: (e) => setForm((f) => ({ ...f, [k]: e.target.value })) });
 
   const orderText = () => {
     const lines = [
       `${SHOP_NAME} ${t.orderSubject.replace(/[【】[\]]/g, '').trim()}`,
-      `(${market === 'overseas' ? t.overseas : t.domestic})`,
       '',
       ...items.map((i) => `・${i.title}\n  ${t.options[i.option]} × ${i.qty}  ${yen(i.price * i.qty)}`),
       '',
       `${t.subtotal}: ${yen(subtotal)}`,
-      ...(market === 'overseas' ? [] : [`${t.tax}: ${yen(tax)}`, `${t.total}: ${yen(total)}`]),
+      `${t.tax}: ${yen(tax)}`,
+      `${t.total}: ${yen(total)}`,
       t.shippingNote,
       '',
       `■ ${t.orderForm}`,
@@ -113,11 +113,9 @@ export default function CartDrawer({ open, items, t, market, onClose, onQty, onR
             <>
               <dl className="mt-5 space-y-1.5 text-sm">
                 <div className="flex justify-between"><dt className="text-ink-soft">{t.subtotal}</dt><dd>{yen(subtotal)}</dd></div>
-                {market !== 'overseas' && (
-                  <div className="flex justify-between"><dt className="text-ink-soft">{t.tax}</dt><dd>{yen(tax)}</dd></div>
-                )}
+                <div className="flex justify-between"><dt className="text-ink-soft">{t.tax}</dt><dd>{yen(tax)}</dd></div>
                 <div className="flex justify-between border-t border-cream-line pt-2 text-lg font-semibold">
-                  <dt>{market === 'overseas' ? t.totalOverseas : t.total}</dt><dd>{yen(total)}</dd>
+                  <dt>{t.total}</dt><dd>{yen(total)}</dd>
                 </div>
               </dl>
               <p className="mt-2 text-xs text-ink-mute">{t.shippingNote}</p>

@@ -11,8 +11,6 @@ const dict = {
     pickup: 'Pick Up',
     pickupSub: '今月のおすすめロット',
     lineup: 'Line Up',
-    domestic: '国内',
-    overseas: 'Overseas',
     search: '豆の名前・フレーバー・産地で検索',
     all: 'すべて',
     inStock: '在庫ありのみ',
@@ -21,9 +19,7 @@ const dict = {
     sortPriceAsc: '価格が安い順',
     sortPriceDesc: '価格が高い順',
     wholesale1kg: '卸価格 1kg',
-    overseas1kg: '海外卸価格 1kg',
     exTax: '税抜',
-    inTax: '税込',
     stock: '在庫',
     soldOut: 'SOLD OUT',
     stockNote: '月初時点',
@@ -44,8 +40,7 @@ const dict = {
     crop: 'クロップ',
     flavor: 'フレーバー',
     blendOf: 'ブレンド構成',
-    priceTable: '価格表',
-    size: '容量',
+    priceTable: '卸価格',
     option: 'ご注文形態',
     qty: '数量',
     sample: 'サンプルあり',
@@ -55,7 +50,6 @@ const dict = {
     subtotal: '小計（税抜）',
     tax: '消費税（8%）',
     total: '合計（税込）',
-    totalOverseas: '合計',
     shippingNote: '※別途、配送先に応じて送料を頂戴しております。',
     orderForm: 'ご注文者情報',
     company: '店舗名・会社名',
@@ -88,16 +82,9 @@ const dict = {
       newCrop: 'New Crop',
     },
     options: {
-      wholesale: '焙煎豆 1kg（卸価格）',
-      overseas: '焙煎豆 1kg（海外卸価格）',
-      green: '生豆 1kg',
+      wholesale: '焙煎豆 1kg',
       sh400: 'Strong Hold焙煎 400g（トップロット限定）',
-      sh400os: 'Strong Hold焙煎 400g（海外・トップロット限定）',
-      g100: '焙煎豆 100g', g150: '焙煎豆 150g', g200: '焙煎豆 200g', g300: '焙煎豆 300g',
-      g400: '焙煎豆 400g', g500: '焙煎豆 500g', kg1: '焙煎豆 1kg（小分け価格）',
     },
-    groupBulk: '卸・まとめ買い',
-    groupSize: '小分けサイズ',
   },
   en: {
     tagline: 'Roasted Coffee Wholesale',
@@ -111,8 +98,6 @@ const dict = {
     pickup: 'Pick Up',
     pickupSub: 'Featured lots this month',
     lineup: 'Line Up',
-    domestic: 'Japan',
-    overseas: 'Overseas',
     search: 'Search by name, flavor or origin',
     all: 'All',
     inStock: 'In stock only',
@@ -121,9 +106,7 @@ const dict = {
     sortPriceAsc: 'Price: low to high',
     sortPriceDesc: 'Price: high to low',
     wholesale1kg: 'Wholesale / 1kg',
-    overseas1kg: 'Overseas wholesale / 1kg',
     exTax: 'excl. tax',
-    inTax: 'incl. tax',
     stock: 'Stock',
     soldOut: 'SOLD OUT',
     stockNote: 'as of month start',
@@ -144,8 +127,7 @@ const dict = {
     crop: 'Crop',
     flavor: 'Flavor',
     blendOf: 'Blend components',
-    priceTable: 'Price list',
-    size: 'Size',
+    priceTable: 'Wholesale price',
     option: 'Format',
     qty: 'Qty',
     sample: 'Sample available',
@@ -155,7 +137,6 @@ const dict = {
     subtotal: 'Subtotal (excl. tax)',
     tax: 'Consumption tax (8%)',
     total: 'Total (incl. tax)',
-    totalOverseas: 'Total',
     shippingNote: '* Shipping is charged separately depending on destination.',
     orderForm: 'Your details',
     company: 'Shop / Company',
@@ -188,16 +169,9 @@ const dict = {
       newCrop: 'New Crop',
     },
     options: {
-      wholesale: 'Roasted 1kg (wholesale)',
-      overseas: 'Roasted 1kg (overseas wholesale)',
-      green: 'Green beans 1kg',
+      wholesale: 'Roasted 1kg',
       sh400: 'Strong Hold roast 400g (top lots)',
-      sh400os: 'Strong Hold roast 400g (overseas, top lots)',
-      g100: 'Roasted 100g', g150: 'Roasted 150g', g200: 'Roasted 200g', g300: 'Roasted 300g',
-      g400: 'Roasted 400g', g500: 'Roasted 500g', kg1: 'Roasted 1kg (retail pack)',
     },
-    groupBulk: 'Wholesale',
-    groupSize: 'Retail sizes',
   },
 };
 
@@ -205,22 +179,11 @@ export function makeT(lang) {
   return dict[lang] ?? dict.ja;
 }
 
-// 市場（国内/海外）ごとに注文できる形態
-export function optionsFor(bean, market) {
-  const bulk = market === 'overseas'
-    ? [['overseas', bean.overseas], ['sh400os', bean.sh400os], ['green', bean.green]]
-    : [['wholesale', bean.wholesale], ['sh400', bean.sh400], ['green', bean.green]];
-  const sizes = market === 'overseas'
-    ? []
-    : ['g100', 'g150', 'g200', 'g300', 'g400', 'g500', 'kg1'].map((k) => [k, bean.sizes[k]]);
-  return {
-    bulk: bulk.filter(([, p]) => p).map(([id, price]) => ({ id, price })),
-    sizes: sizes.filter(([, p]) => p).map(([id, price]) => ({ id, price, priceTax: bean.sizesTax[id] })),
-  };
-}
-
-export function mainPrice(bean, market) {
-  return market === 'overseas' ? bean.overseas : bean.wholesale;
+// 注文できる形態（シートで公開している 1kg 卸価格と Strong Hold 400g）
+export function optionsFor(bean) {
+  return [['wholesale', bean.wholesale], ['sh400', bean.sh400]]
+    .filter(([, p]) => p)
+    .map(([id, price]) => ({ id, price }));
 }
 
 export const yen = (n) => (n == null ? '—' : `¥${Math.round(n).toLocaleString('ja-JP')}`);

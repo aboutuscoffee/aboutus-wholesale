@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchSheet } from './lib/sheet';
-import { fetchMedia } from './lib/db';
-import { makeT, mainPrice, optionsFor, yen } from './i18n';
+import { fetchBeans, toBean } from './lib/db';
+import { makeT, optionsFor, yen } from './i18n';
 import { ORDER_EMAIL } from './config';
 import BeanCard from './components/BeanCard';
 import BeanRow, { BeanRowHeader } from './components/BeanRow';
@@ -12,6 +11,7 @@ import AdminEditor from './components/AdminEditor';
 import { RANK_ORDER } from './components/Badges';
 
 const BASE = import.meta.env.BASE_URL;
+const NEW_BEAN = '__new';
 
 function usePersisted(key, initial) {
   const [value, setValue] = useState(() => {
@@ -57,11 +57,9 @@ function recommendScore(bean, media) {
 
 export default function App() {
   const [lang, setLang] = usePersisted('ws-lang', 'ja');
-  const [market, setMarket] = usePersisted('ws-market', 'domestic');
   const [cart, setCart] = usePersisted('ws-cart', []);
   const [view, setView] = usePersisted('ws-view', 'list');
-  const [data, setData] = useState(null);
-  const [media, setMedia] = useState({});
+  const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [country, setCountry] = useState('');
@@ -76,18 +74,20 @@ export default function App() {
   const t = makeT(lang);
 
   useEffect(() => {
-    fetchSheet().then(setData).catch((e) => setError(e.message));
-    fetchMedia().then(setMedia);
+    fetchBeans().then(setRows).catch((e) => setError(e.message));
   }, []);
 
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
 
+  // media は写真・紹介文などを含むDBの行そのもの（豆IDで引く）
+  const media = useMemo(() => Object.fromEntries((rows ?? []).map((r) => [r.id, r])), [rows]);
   const beans = useMemo(
-    () => (data?.beans ?? []).filter((b) => admin.ok || !media[b.key]?.hidden),
-    [data, media, admin.ok]
+    () => (rows ?? []).filter((r) => admin.ok || !r.hidden).map(toBean),
+    [rows, admin.ok]
   );
+  const ready = rows != null && (rows.length > 0 || admin.ok);
 
   // シート更新で価格が変わった場合に備え、カートの価格は常に最新シートから引き直す
   const cartItems = useMemo(() => {
@@ -96,12 +96,11 @@ export default function App() {
       .map((c) => {
         const bean = byKey[c.key];
         if (!bean || bean.stock.soldOut) return null;
-        const { bulk, sizes } = optionsFor(bean, market);
-        const opt = [...bulk, ...sizes].find((o) => o.id === c.option);
+        const opt = optionsFor(bean).find((o) => o.id === c.option);
         return opt ? { ...c, title: bean.title, price: opt.price } : null;
       })
       .filter(Boolean);
-  }, [cart, beans, market]);
+  }, [cart, beans]);
 
   const countries = useMemo(() => {
     const seen = new Map();
@@ -124,13 +123,13 @@ export default function App() {
       }
       return true;
     });
-    const price = (b) => mainPrice(b, market) ?? Infinity;
+    const price = (b) => b.wholesale ?? Infinity;
     if (sort === 'recommend') list = [...list].sort((a, b) => recommendScore(a, media[a.key]) - recommendScore(b, media[b.key]));
     if (sort === 'priceAsc') list = [...list].sort((a, b) => price(a) - price(b));
-    if (sort === 'priceDesc') list = [...list].sort((a, b) => (mainPrice(b, market) ?? 0) - (mainPrice(a, market) ?? 0));
+    if (sort === 'priceDesc') list = [...list].sort((a, b) => (b.wholesale ?? 0) - (a.wholesale ?? 0));
     // 売り切れは常に後ろへ
     return [...list].sort((a, b) => Number(a.stock.soldOut) - Number(b.stock.soldOut));
-  }, [beans, media, query, country, rank, inStock, sort, market]);
+  }, [beans, media, query, country, rank, inStock, sort]);
 
   const groups = useMemo(() => {
     if (sort !== 'origin') return [{ id: 'all', items: filtered }];
@@ -163,8 +162,7 @@ export default function App() {
   }, [setCart, t.added]);
 
   const quickAdd = (bean) => {
-    const { bulk, sizes } = optionsFor(bean, market);
-    const first = bulk[0] ?? sizes[0];
+    const first = optionsFor(bean)[0];
     if (first) addToCart(bean, first.id, 1);
   };
 
@@ -172,7 +170,6 @@ export default function App() {
   const removeItem = (id) => setCart((c) => c.filter((i) => i.id !== id));
 
   const openBean = beans.find((b) => b.key === openKey);
-  const editBean = beans.find((b) => b.key === editKey);
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
   const directCount = beans.filter((b) => b.labels.includes('directTrade')).length;
   const inquiryHref = `mailto:${ORDER_EMAIL}?subject=${encodeURIComponent(t.inquirySubject)}`;
@@ -192,11 +189,6 @@ export default function App() {
             </div>
           </a>
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-            <Segmented
-              value={market}
-              onChange={setMarket}
-              options={[['domestic', t.domestic], ['overseas', t.overseas]]}
-            />
             <Segmented value={lang} onChange={setLang} options={[['ja', 'JA'], ['en', 'EN']]} />
             <button
               type="button"
@@ -213,7 +205,7 @@ export default function App() {
         </div>
         {admin.ok && (
           <div className="bg-rust px-4 py-1 text-center text-xs text-white">
-            管理者モード — 各カードの「写真・説明を編集」から登録できます
+            管理者モード — 各豆の「編集」から内容を変更、「＋ 豆を追加」で新規登録できます
           </div>
         )}
       </header>
@@ -233,7 +225,7 @@ export default function App() {
             <a href="#lineup" className="rounded-full bg-white px-6 py-3 text-sm font-medium text-ink hover:bg-cream">{t.browse}</a>
             <a href={inquiryHref} className="rounded-full px-6 py-3 text-sm font-medium text-white ring-1 ring-white/70 hover:bg-white/10">{t.inquiry}</a>
           </div>
-          {data && !data.notConfigured && (
+          {ready && (
             <dl className="mt-12 flex gap-10">
               <Stat n={beans.length} label={t.statLots} />
               <Stat n={countries.length} label={t.statOrigins} />
@@ -243,11 +235,10 @@ export default function App() {
         </div>
       </section>
 
-      {!data && !error && <p className="py-24 text-center text-sm text-ink-mute">{t.loading}</p>}
-      {data?.notConfigured && <p className="py-24 text-center text-sm text-ink-mute">{t.preparing}</p>}
-      {error && <p className="py-24 text-center text-sm text-rust">{t.loadError}</p>}
+      {rows == null && !error && <p className="py-24 text-center text-sm text-ink-mute">{t.loading}</p>}
+      {((rows != null && !ready) || error) && <p className="py-24 text-center text-sm text-ink-mute">{t.preparing}</p>}
 
-      {data && !data.notConfigured && (
+      {ready && (
         <>
           {/* Pick Up */}
           {pickups.length > 0 && (
@@ -267,7 +258,7 @@ export default function App() {
                       <div className="text-[11px] tracking-[0.2em] opacity-80">{b.rank || 'BLEND'} · {b.country.toUpperCase()}</div>
                       <div className="mt-1 font-serif text-xl font-semibold leading-snug">{b.title}</div>
                       <div className="mt-1 line-clamp-1 text-xs opacity-80">{b.flavorNotes.slice(0, 3).join(' · ')}</div>
-                      <div className="mt-3 font-serif text-lg">{yen(mainPrice(b, market))}<span className="ml-1 text-xs opacity-70">{t.perKg}</span></div>
+                      <div className="mt-3 font-serif text-lg">{yen(b.wholesale)}<span className="ml-1 text-xs opacity-70">{t.perKg}</span></div>
                     </div>
                   </button>
                 ))}
@@ -319,7 +310,14 @@ export default function App() {
             </div>
 
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-xs text-ink-mute">{filtered.length} {t.results}</p>
+              <div className="flex items-center gap-3">
+                <p className="text-xs text-ink-mute">{filtered.length} {t.results}</p>
+                {admin.ok && (
+                  <button type="button" onClick={() => setEditKey(NEW_BEAN)} className="rounded-full bg-rust px-3 py-1 text-xs text-white">
+                    + 豆を追加
+                  </button>
+                )}
+              </div>
               <Segmented value={view} onChange={setView} options={[['list', `☰ ${t.viewList}`], ['card', `▦ ${t.viewCard}`]]} />
             </div>
 
@@ -336,14 +334,13 @@ export default function App() {
                 )}
                 {view === 'list' ? (
                   <div className="space-y-2">
-                    <BeanRowHeader t={t} market={market} />
+                    <BeanRowHeader t={t} />
                     {g.items.map((b) => (
                       <BeanRow
                         key={b.key}
                         bean={b}
                         media={media[b.key]}
                         t={t}
-                        market={market}
                         admin={admin.ok}
                         onOpen={() => setOpenKey(b.key)}
                         onQuickAdd={() => quickAdd(b)}
@@ -360,7 +357,6 @@ export default function App() {
                       media={media[b.key]}
                       t={t}
                       lang={lang}
-                      market={market}
                       admin={admin.ok}
                       onOpen={() => setOpenKey(b.key)}
                       onQuickAdd={() => quickAdd(b)}
@@ -380,7 +376,7 @@ export default function App() {
               <div className="relative max-w-xl">
                 <h2 className="font-serif text-3xl font-semibold">{t.contactTitle}</h2>
                 <p className="mt-3 text-sm leading-relaxed opacity-80">{t.contactBody}</p>
-                {data.note && <p className="mt-3 whitespace-pre-line text-xs leading-relaxed opacity-60">{data.note.replace(/^※商品名が黄色.*$/m, '').trim()}</p>}
+                <p className="mt-3 text-xs leading-relaxed opacity-60">{t.shippingNote}</p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <a href={inquiryHref} className="rounded-full bg-white px-6 py-3 text-sm font-medium text-ink hover:bg-cream">{t.inquiry}</a>
                   <span className="self-center text-sm opacity-70">{ORDER_EMAIL}</span>
@@ -410,23 +406,27 @@ export default function App() {
 
       {openBean && (
         <BeanDetail
-          key={`${openBean.key}-${market}`}
+          key={openBean.key}
           bean={openBean}
           media={media[openBean.key]}
           t={t}
           lang={lang}
-          market={market}
           onClose={() => setOpenKey(null)}
           onAdd={addToCart}
         />
       )}
 
-      {editBean && (
+      {editKey && (
         <AdminEditor
-          bean={editBean}
-          media={media[editBean.key]}
+          row={editKey === NEW_BEAN ? null : media[editKey]}
+          rows={rows ?? []}
           onClose={() => setEditKey(null)}
-          onSaved={(m) => setMedia((prev) => ({ ...prev, [m.key]: m }))}
+          onSaved={(saved) => setRows((prev) => {
+            const exists = prev.some((r) => r.id === saved.id);
+            const next = exists ? prev.map((r) => (r.id === saved.id ? saved : r)) : [...prev, saved];
+            return next.sort((a, b) => a.sort_order - b.sort_order);
+          })}
+          onDeleted={(id) => setRows((prev) => prev.filter((r) => r.id !== id))}
         />
       )}
 
@@ -434,7 +434,6 @@ export default function App() {
         open={cartOpen}
         items={cartItems}
         t={t}
-        market={market}
         onClose={() => setCartOpen(false)}
         onQty={setQty}
         onRemove={removeItem}

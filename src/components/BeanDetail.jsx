@@ -13,9 +13,8 @@ function Spec({ label, value }) {
   );
 }
 
-export default function BeanDetail({ bean, media, t, lang, market, onClose, onAdd }) {
-  const { bulk, sizes } = optionsFor(bean, market);
-  const all = [...bulk, ...sizes];
+export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
+  const all = optionsFor(bean);
   const [option, setOption] = useState(all[0]?.id ?? '');
   const [qty, setQty] = useState(1);
   const [photo, setPhoto] = useState(0);
@@ -134,25 +133,11 @@ export default function BeanDetail({ bean, media, t, lang, market, onClose, onAd
               <div className="border-b border-cream-line px-4 py-3 text-sm font-medium">{t.priceTable}</div>
               <table className="w-full text-sm">
                 <tbody>
-                  {bulk.map((o) => (
+                  {all.map((o) => (
                     <tr key={o.id} className="border-b border-cream-line/60 last:border-0">
                       <td className="px-4 py-2.5 text-ink">{t.options[o.id]}</td>
                       <td className="px-4 py-2.5 text-right font-semibold">{yen(o.price)}</td>
-                      <td className="w-24 px-4 py-2.5 text-right text-xs text-ink-mute">{market === 'overseas' ? '' : t.exTax}</td>
-                    </tr>
-                  ))}
-                  {sizes.length > 0 && (
-                    <tr className="bg-cream/60">
-                      <td className="px-4 py-1.5 text-[11px] uppercase tracking-wider text-ink-mute">{t.groupSize}</td>
-                      <td className="px-4 py-1.5 text-right text-[11px] text-ink-mute">{t.exTax}</td>
-                      <td className="px-4 py-1.5 text-right text-[11px] text-ink-mute">{t.inTax}</td>
-                    </tr>
-                  )}
-                  {sizes.map((o) => (
-                    <tr key={o.id} className="border-b border-cream-line/60 last:border-0">
-                      <td className="px-4 py-2 text-ink-soft">{t.options[o.id].replace(/^焙煎豆 |^Roasted /, '')}</td>
-                      <td className="px-4 py-2 text-right">{yen(o.price)}</td>
-                      <td className="px-4 py-2 text-right text-ink-mute">{yen(o.priceTax)}</td>
+                      <td className="w-20 px-4 py-2.5 text-right text-xs text-ink-mute">{t.exTax}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -169,16 +154,7 @@ export default function BeanDetail({ bean, media, t, lang, market, onClose, onAd
                     disabled={soldOut}
                     className="w-full rounded-xl border border-cream-line bg-white px-3 py-2.5 text-sm"
                   >
-                    {bulk.length > 0 && (
-                      <optgroup label={t.groupBulk}>
-                        {bulk.map((o) => <option key={o.id} value={o.id}>{t.options[o.id]} — {yen(o.price)}</option>)}
-                      </optgroup>
-                    )}
-                    {sizes.length > 0 && (
-                      <optgroup label={t.groupSize}>
-                        {sizes.map((o) => <option key={o.id} value={o.id}>{t.options[o.id]} — {yen(o.price)}</option>)}
-                      </optgroup>
-                    )}
+                    {all.map((o) => <option key={o.id} value={o.id}>{t.options[o.id]} — {yen(o.price)}</option>)}
                   </select>
                 </label>
                 <label className="w-20">

@@ -1,10 +1,10 @@
 import BeanVisual from './BeanVisual';
 import { RankBadge, LabelBadges } from './Badges';
-import { mainPrice, yen } from '../i18n';
+import { yen } from '../i18n';
 
-export default function BeanCard({ bean, media, t, lang, market, onOpen, onQuickAdd, admin, onEdit }) {
+export default function BeanCard({ bean, media, t, lang, onOpen, onQuickAdd, admin, onEdit }) {
   const soldOut = bean.stock.soldOut;
-  const price = mainPrice(bean, market);
+  const price = bean.wholesale;
   const catchCopy = lang === 'en' ? media?.catch_en || media?.catch_ja : media?.catch_ja || media?.catch_en;
 
   return (
@@ -50,7 +50,7 @@ export default function BeanCard({ bean, media, t, lang, market, onOpen, onQuick
         <div className="mt-auto flex items-end justify-between gap-3 pt-4">
           <div>
             <div className="text-[11px] text-ink-mute">
-              {market === 'overseas' ? t.overseas1kg : `${t.wholesale1kg}（${t.exTax}）`}
+              {`${t.wholesale1kg}（${t.exTax}）`}
             </div>
             <div className="font-serif text-2xl font-semibold tracking-tight text-ink">{yen(price)}</div>
             <div className={`text-[11px] ${soldOut ? 'text-rust' : 'text-ink-mute'}`}>
@@ -60,7 +60,7 @@ export default function BeanCard({ bean, media, t, lang, market, onOpen, onQuick
           <div className="flex flex-col items-end gap-2">
             {admin && (
               <button type="button" onClick={onEdit} className="rounded-full border border-rust px-3 py-1 text-xs text-rust hover:bg-rust hover:text-white">
-                写真・説明を編集
+                編集
               </button>
             )}
             <button
