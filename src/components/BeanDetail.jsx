@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import BeanVisual from './BeanVisual';
 import { RankBadge, LabelBadges } from './Badges';
 import { optionsFor, yen } from '../i18n';
+import StrongHoldOption from './StrongHoldOption';
 
 function Spec({ label, value }) {
   if (!value) return null;
@@ -133,7 +134,7 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
               <div className="border-b border-cream-line px-4 py-3 text-sm font-medium">{t.priceTable}</div>
               <table className="w-full text-sm">
                 <tbody>
-                  {all.map((o) => (
+                  {all.filter((o) => o.id !== 'sh400').map((o) => (
                     <tr key={o.id} className="border-b border-cream-line/60 last:border-0">
                       <td className="px-4 py-2.5 text-ink">{t.options[o.id]}</td>
                       <td className="px-4 py-2.5 text-right font-semibold">{yen(o.price)}</td>
@@ -143,6 +144,17 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
                 </tbody>
               </table>
             </div>
+
+            {bean.sh400 && (
+              <div className="mt-3">
+                <StrongHoldOption
+                  bean={bean}
+                  t={t}
+                  soldOut={soldOut}
+                  onAdd={() => { setOption('sh400'); onAdd(bean, 'sh400', 1); setAdded(true); setTimeout(() => setAdded(false), 1500); }}
+                />
+              </div>
+            )}
 
             <div className="sticky bottom-0 -mx-5 mt-6 border-t border-cream-line bg-cream/95 px-5 py-4 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
               <div className="flex flex-wrap items-end gap-3">

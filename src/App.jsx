@@ -161,9 +161,9 @@ export default function App() {
     setTimeout(() => setToast(''), 1800);
   }, [setCart, t.added]);
 
-  const quickAdd = (bean) => {
-    const first = optionsFor(bean)[0];
-    if (first) addToCart(bean, first.id, 1);
+  const quickAdd = (bean, optionId) => {
+    const opt = optionsFor(bean).find((o) => !optionId || o.id === optionId);
+    if (opt) addToCart(bean, opt.id, 1);
   };
 
   const setQty = (id, qty) => setCart((c) => (qty <= 0 ? c.filter((i) => i.id !== id) : c.map((i) => (i.id === id ? { ...i, qty } : i))));
@@ -343,7 +343,8 @@ export default function App() {
                         t={t}
                         admin={admin.ok}
                         onOpen={() => setOpenKey(b.key)}
-                        onQuickAdd={() => quickAdd(b)}
+                        onQuickAdd={() => quickAdd(b, 'wholesale')}
+                        onAddSh400={() => quickAdd(b, 'sh400')}
                         onEdit={() => setEditKey(b.key)}
                       />
                     ))}
@@ -359,7 +360,8 @@ export default function App() {
                       lang={lang}
                       admin={admin.ok}
                       onOpen={() => setOpenKey(b.key)}
-                      onQuickAdd={() => quickAdd(b)}
+                      onQuickAdd={() => quickAdd(b, 'wholesale')}
+                        onAddSh400={() => quickAdd(b, 'sh400')}
                       onEdit={() => setEditKey(b.key)}
                     />
                   ))}

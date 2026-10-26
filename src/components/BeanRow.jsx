@@ -1,5 +1,6 @@
 import BeanVisual from './BeanVisual';
 import { RankBadge, LabelBadges } from './Badges';
+import StrongHoldOption from './StrongHoldOption';
 import { yen } from '../i18n';
 
 // 一覧性重視の1行表示。PCでは表形式、スマホでは2段の詰めた行になる
@@ -20,7 +21,7 @@ export function BeanRowHeader({ t }) {
   );
 }
 
-export default function BeanRow({ bean, media, t, onOpen, onQuickAdd, admin, onEdit }) {
+export default function BeanRow({ bean, media, t, onOpen, onQuickAdd, onAddSh400, admin, onEdit }) {
   const soldOut = bean.stock.soldOut;
   const price = bean.wholesale;
   const origin = bean.isBlend ? 'Original Blend' : bean.country;
@@ -86,6 +87,12 @@ export default function BeanRow({ bean, media, t, onOpen, onQuickAdd, admin, onE
           )}
         </div>
       </div>
+
+      {bean.sh400 && (
+        <div className="mt-2 lg:col-[2/-1] lg:mt-1">
+          <StrongHoldOption bean={bean} t={t} soldOut={soldOut} onAdd={onAddSh400} size="sm" />
+        </div>
+      )}
     </div>
   );
 }

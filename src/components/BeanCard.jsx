@@ -1,8 +1,9 @@
 import BeanVisual from './BeanVisual';
 import { RankBadge, LabelBadges } from './Badges';
+import StrongHoldOption from './StrongHoldOption';
 import { yen } from '../i18n';
 
-export default function BeanCard({ bean, media, t, lang, onOpen, onQuickAdd, admin, onEdit }) {
+export default function BeanCard({ bean, media, t, lang, onOpen, onQuickAdd, onAddSh400, admin, onEdit }) {
   const soldOut = bean.stock.soldOut;
   const price = bean.wholesale;
   const catchCopy = lang === 'en' ? media?.catch_en || media?.catch_ja : media?.catch_ja || media?.catch_en;
@@ -44,6 +45,12 @@ export default function BeanCard({ bean, media, t, lang, onOpen, onQuickAdd, adm
             {bean.flavorNotes.slice(0, 4).map((f) => (
               <span key={f} className="rounded-full bg-cream px-2.5 py-1 text-[11px] text-ink-soft">{f}</span>
             ))}
+          </div>
+        )}
+
+        {bean.sh400 && (
+          <div className="mt-4">
+            <StrongHoldOption bean={bean} t={t} soldOut={soldOut} onAdd={onAddSh400} size="stack" />
           </div>
         )}
 
