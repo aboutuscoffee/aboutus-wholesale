@@ -211,9 +211,9 @@ export default function App() {
       </header>
 
       {/* Hero */}
-      <section id="top" className="relative overflow-hidden bg-sea">
-        <div className="absolute inset-0 opacity-90" style={{ backgroundImage: `url(${BASE}hero-pattern.png)`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-        <div className="absolute inset-0 bg-gradient-to-r from-ink/70 via-ink/40 to-transparent" />
+      <section id="top" className="relative overflow-hidden bg-ink">
+        <img src={`${BASE}hero-roast.jpg`} alt="" className="absolute inset-0 h-full w-full object-cover object-[65%_center]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-ink/80 via-ink/50 to-ink/10" />
         <div className="relative mx-auto max-w-7xl px-4 py-16 text-white sm:px-6 sm:py-24">
           <p className="text-xs tracking-[0.35em] opacity-80">{t.tagline.toUpperCase()}</p>
           <h1 className="mt-4 max-w-2xl font-serif text-4xl font-semibold leading-[1.15] sm:text-6xl">
