@@ -66,13 +66,13 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
             {images.length > 0 ? (
               <div>
                 <div className="aspect-square overflow-hidden rounded-2xl bg-cream-deep">
-                  <img src={images[photo]} alt={bean.title} className="h-full w-full object-cover" />
+                  <img src={images[photo]} alt={bean.title} className="h-full w-full object-contain" />
                 </div>
                 {images.length > 1 && (
                   <div className="mt-3 flex gap-2">
                     {images.map((u, i) => (
                       <button key={u} type="button" onClick={() => setPhoto(i)} className={`h-16 w-16 overflow-hidden rounded-xl ring-2 ${i === photo ? 'ring-ink' : 'ring-transparent'}`}>
-                        <img src={u} alt="" className="h-full w-full object-cover" />
+                        <img src={u} alt="" className="h-full w-full object-contain" />
                       </button>
                     ))}
                   </div>

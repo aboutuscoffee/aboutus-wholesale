@@ -12,7 +12,7 @@ export default function BeanVisual({ bean, media, className = '', rounded = 'rou
   if (url) {
     return (
       <div className={`overflow-hidden bg-cream-deep ${rounded} ${className}`}>
-        <img src={url} alt={bean.title} loading="lazy" className="h-full w-full object-cover" />
+        <img src={url} alt={bean.title} loading="lazy" className="h-full w-full object-contain" />
       </div>
     );
   }

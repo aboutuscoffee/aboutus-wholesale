@@ -196,7 +196,7 @@ export default function AdminEditor({ row, rows, onClose, onSaved, onDeleted }) 
         <div className="flex flex-wrap gap-3">
           {draft.image_urls.map((u, i) => (
             <div key={u} className="relative h-28 w-28 overflow-hidden rounded-xl bg-cream-deep">
-              <img src={u} alt="" className="h-full w-full object-cover" />
+              <img src={u} alt="" className="h-full w-full object-contain" />
               <div className="absolute inset-x-0 bottom-0 flex justify-between bg-ink/60 px-1 text-xs text-white">
                 <button type="button" onClick={() => move(i, -1)} className="px-1">←</button>
                 <button type="button" onClick={() => set('image_urls', draft.image_urls.filter((x) => x !== u))} className="px-1">削除</button>
