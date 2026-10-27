@@ -13,7 +13,7 @@ export default function BeanCard({ bean, media, t, lang, onOpen, onQuickAdd, onA
       className={`group flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_1px_0_#ddd3c6] ring-1 ring-cream-line/70 transition hover:-translate-y-0.5 hover:shadow-lg ${soldOut ? 'opacity-70' : ''} ${media?.hidden ? 'outline-dashed outline-2 outline-rust' : ''}`}
     >
       <button type="button" onClick={onOpen} className="relative block text-left">
-        <BeanVisual bean={bean} media={media} className="aspect-[16/9] w-full" rounded="rounded-none" />
+        <BeanVisual bean={bean} media={media} className="aspect-[4/3] w-full" rounded="rounded-none" />
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
           <LabelBadges bean={bean} media={media} t={t} soldOut={soldOut} />
         </div>

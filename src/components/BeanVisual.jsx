@@ -11,8 +11,10 @@ export default function BeanVisual({ bean, media, className = '', rounded = 'rou
   const url = media?.image_urls?.[0];
   if (url) {
     return (
-      <div className={`overflow-hidden bg-cream-deep ${rounded} ${className}`}>
-        <img src={url} alt={bean.title} loading="lazy" className="h-full w-full object-cover object-[center_40%]" />
+      // 縦長のインフォカードも全体（色まで）見えるよう、全体表示＋同じ写真のぼかしを背景に敷く
+      <div className={`relative overflow-hidden bg-cream-deep ${rounded} ${className}`}>
+        <img src={url} alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-70 blur-2xl" />
+        <img src={url} alt={bean.title} loading="lazy" className="relative h-full w-full object-contain drop-shadow-md" />
       </div>
     );
   }
