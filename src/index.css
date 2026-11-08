@@ -7,3 +7,8 @@ body {
 }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+
+/* iPhone の Safari は16px未満の入力欄をタップすると画面を拡大するため、スマホ幅では16pxにする */
+@media (max-width: 639px) {
+  input, select, textarea { font-size: 16px !important; }
+}

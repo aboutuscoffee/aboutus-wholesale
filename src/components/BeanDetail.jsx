@@ -9,7 +9,7 @@ function Spec({ label, value }) {
   return (
     <div className="border-b border-cream-line/70 py-2.5">
       <dt className="text-[11px] uppercase tracking-wider text-ink-mute">{label}</dt>
-      <dd className="mt-0.5 text-sm text-ink">{value}</dd>
+      <dd className="mt-0.5 break-words text-sm text-ink">{value}</dd>
     </div>
   );
 }
@@ -61,8 +61,8 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
           ×
         </button>
 
-        <div className="grid gap-0 md:grid-cols-2">
-          <div className="p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
+          <div className="min-w-0 p-4 md:p-6">
             {images.length > 0 ? (
               <div>
                 <div className="aspect-square overflow-hidden rounded-2xl bg-cream-deep">
@@ -94,7 +94,7 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
             )}
           </div>
 
-          <div className="p-5 pt-0 md:p-8 md:pl-2">
+          <div className="min-w-0 p-5 pt-0 md:p-8 md:pl-2">
             <div className="flex flex-wrap items-center gap-2 pr-12">
               <RankBadge rank={bean.rank} />
               <LabelBadges bean={bean} media={media} t={t} soldOut={soldOut} />
@@ -108,7 +108,7 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
             {description && <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink-soft">{description}</p>}
             {bean.story && <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink-soft">{bean.story}</p>}
 
-            <dl className="mt-5 grid grid-cols-2 gap-x-6">
+            <dl className="mt-5 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 sm:gap-x-6">
               <Spec label={t.producer} value={bean.producer} />
               <Spec label={t.region} value={bean.region} />
               <Spec label={t.process} value={bean.process} />
@@ -158,7 +158,7 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
 
             <div className="sticky bottom-0 -mx-5 mt-6 border-t border-cream-line bg-cream/95 px-5 py-4 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
               <div className="flex flex-wrap items-end gap-3">
-                <label className="min-w-0 flex-1">
+                <label className="min-w-[10rem] flex-1">
                   <span className="mb-1 block text-[11px] text-ink-mute">{t.option}</span>
                   <select
                     value={option}
@@ -184,7 +184,7 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
                   type="button"
                   onClick={handleAdd}
                   disabled={soldOut || !selected}
-                  className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-sea-deep disabled:bg-cream-line disabled:text-ink-mute sm:w-auto"
+                  className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-white transition hover:bg-sea-deep disabled:bg-cream-line disabled:text-ink-mute lg:w-auto"
                 >
                   {soldOut ? t.soldOut : added ? `✓ ${t.added}` : `${t.addToCart}${selected ? ` · ${yen(selected.price * qty)}` : ''}`}
                 </button>

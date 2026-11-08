@@ -205,7 +205,7 @@ export default function App() {
         </div>
         {admin.ok && (
           <div className="bg-rust px-4 py-1 text-center text-xs text-white">
-            管理者モード — 各豆の「編集」から内容を変更、「＋ 豆を追加」で新規登録できます
+            管理者モード<span className="hidden sm:inline"> — 各豆の「編集」から内容を変更、「＋ 豆を追加」で新規登録できます</span>
           </div>
         )}
       </header>
@@ -403,7 +403,7 @@ export default function App() {
       )}
 
       {toast && (
-        <div className="fixed left-1/2 top-20 z-[70] -translate-x-1/2 rounded-full bg-ink px-5 py-2.5 text-sm text-white shadow-lg">{toast}</div>
+        <div className="fixed inset-x-4 top-20 z-[70] mx-auto w-fit max-w-md rounded-full bg-ink px-5 py-2.5 text-center text-sm text-white shadow-lg">{toast}</div>
       )}
 
       {openBean && (

@@ -2,6 +2,7 @@ import { yen } from '../i18n';
 
 // トップロット限定の「Strong Hold 400g 焙煎」オプション。価格がある豆だけ表示する
 // size: 'md'（詳細画面）/ 'sm'（リストの1行）/ 'stack'（カード内・2段組み）
+// 'sm' はスマホ幅、'md' はタブレット幅以下で自動的に2段組みになる
 export default function StrongHoldOption({ bean, t, soldOut, onAdd, size = 'md' }) {
   if (!bean.sh400) return null;
 
@@ -24,31 +25,37 @@ export default function StrongHoldOption({ bean, t, soldOut, onAdd, size = 'md' 
   );
   const box = 'rounded-xl border border-gold/60 bg-[#fbf6ec]';
 
-  if (size === 'stack') {
-    return (
-      <div className={`${box} px-3 py-2`}>
-        <div className="flex items-center gap-2">
-          {tag}
-          <span className="text-xs font-medium text-ink">{t.shName}</span>
-        </div>
-        <div className="mt-1.5 flex items-center justify-end gap-3">
-          {price('text-base')}
-          {button}
-        </div>
+  const stacked = (extra = '') => (
+    <div className={`${box} px-3 py-2 ${extra}`}>
+      <div className="flex items-center gap-2">
+        {tag}
+        <span className="text-xs font-medium text-ink">{t.shName}</span>
       </div>
-    );
-  }
-
-  const small = size === 'sm';
-  return (
-    <div className={`flex items-center gap-3 ${box} ${small ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
-      {tag}
-      <div className="min-w-0 flex-1">
-        <div className={`truncate font-medium text-ink ${small ? 'text-xs' : 'text-sm'}`}>{t.shName}</div>
-        {!small && <div className="text-[11px] text-ink-mute">{t.shNote}</div>}
+      {size === 'md' && <div className="mt-1 text-[11px] text-ink-mute">{t.shNote}</div>}
+      <div className="mt-1.5 flex items-center justify-end gap-3">
+        {price('text-base')}
+        {button}
       </div>
-      {price(small ? 'text-base' : 'text-xl')}
-      {button}
     </div>
+  );
+
+  if (size === 'stack') return stacked();
+
+  // 詳細画面（md）は右列が狭いタブレット幅でも2段組みにする
+  const small = size === 'sm';
+  const oneLine = small ? 'hidden sm:flex' : 'hidden lg:flex';
+  return (
+    <>
+      {stacked(small ? 'sm:hidden' : 'lg:hidden')}
+      <div className={`items-center gap-3 ${oneLine} ${box} ${small ? 'px-3 py-1.5' : 'px-4 py-3'}`}>
+        {tag}
+        <div className="min-w-0 flex-1">
+          <div className={`truncate font-medium text-ink ${small ? 'text-xs' : 'text-sm'}`}>{t.shName}</div>
+          {!small && <div className="text-[11px] text-ink-mute">{t.shNote}</div>}
+        </div>
+        {price(small ? 'text-base' : 'text-xl')}
+        {button}
+      </div>
+    </>
   );
 }
