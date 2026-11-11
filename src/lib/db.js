@@ -7,8 +7,34 @@ export async function fetchBeans() {
   return data ?? [];
 }
 
+// 店頭の豆（Beans Profile）のうち、豆カード画像がある豆。卸の豆と紐付けてカードを表示する
+export async function fetchStoreCards() {
+  const { data, error } = await supabase
+    .from('beans')
+    .select('id, name, status, card_image_url')
+    .not('card_image_url', 'is', null);
+  if (error) {
+    console.warn('店頭の豆カード読み込み失敗:', error.message);
+    return [];
+  }
+  return (data ?? [])
+    .map((b) => ({ id: String(b.id), name: b.name.trim(), status: b.status, urls: parseCardUrls(b.card_image_url) }))
+    .filter((b) => b.urls.length)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// card_image_url は URL 1つ、または JSON 配列（最大2枚）
+function parseCardUrls(value) {
+  try {
+    const arr = JSON.parse(value);
+    return (Array.isArray(arr) ? arr : [value]).filter(Boolean);
+  } catch {
+    return value ? [value] : [];
+  }
+}
+
 export async function saveBean(row) {
-  const { updated_at, ...rest } = row;
+  const { updated_at, display_images, ...rest } = row;
   const { data, error } = await supabase
     .from('ws_beans')
     .upsert({ ...rest, updated_at: new Date().toISOString() })

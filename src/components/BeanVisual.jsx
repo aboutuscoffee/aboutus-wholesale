@@ -8,7 +8,7 @@ function toneFor(text) {
 }
 
 export default function BeanVisual({ bean, media, className = '', rounded = 'rounded-2xl', plain = false }) {
-  const url = media?.image_urls?.[0];
+  const url = (media?.display_images ?? media?.image_urls)?.[0];
   if (url) {
     return (
       // 縦長のインフォカードも全体（色まで）見えるよう、全体表示＋同じ写真のぼかしを背景に敷く

@@ -21,7 +21,7 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
   const [photo, setPhoto] = useState(0);
   const [added, setAdded] = useState(false);
   const soldOut = bean.stock.soldOut;
-  const images = media?.image_urls ?? [];
+  const images = media?.display_images ?? media?.image_urls ?? [];
   const description = lang === 'en' ? media?.description_en || media?.description_ja : media?.description_ja || media?.description_en;
   const catchCopy = lang === 'en' ? media?.catch_en || media?.catch_ja : media?.catch_ja || media?.catch_en;
 

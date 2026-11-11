@@ -13,6 +13,7 @@ const EMPTY = {
   roast: '', flavor: '', story: '', stock: '', sold_out: false, info_card: false,
   price_1kg: null, price_sh400: null, image_urls: [], catch_ja: '', catch_en: '',
   description_ja: '', description_en: '', sample_available: false, featured: false, hidden: false,
+  store_bean_id: null,
 };
 
 const slug = (s) => s.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -26,7 +27,7 @@ function Field({ label, children, wide }) {
   );
 }
 
-export default function AdminEditor({ row, rows, onClose, onSaved, onDeleted }) {
+export default function AdminEditor({ row, rows, storeCards = [], onClose, onSaved, onDeleted }) {
   const isNew = !row;
   const [draft, setDraft] = useState(() => ({
     ...EMPTY,
@@ -192,7 +193,24 @@ export default function AdminEditor({ row, rows, onClose, onSaved, onDeleted }) 
           )}
         </div>
 
-        <h3 className="mb-2 mt-6 text-sm font-medium">写真（最大{MAX_IMAGES}枚・1枚目がカードに表示）</h3>
+        <h3 className="mb-2 mt-6 text-sm font-medium">店頭の豆カード（インフォカード）</h3>
+        <Field label="店頭（Beans Profile）の豆と紐付けると、その豆カードの画像が自動で表示されます">
+          <select className={input} value={draft.store_bean_id ?? ''} onChange={(e) => set('store_bean_id', e.target.value || null)}>
+            <option value="">（紐付けない）</option>
+            {storeCards.map((c) => <option key={c.id} value={c.id}>{c.name}{c.status ? `（${c.status}）` : ''}</option>)}
+          </select>
+        </Field>
+        {draft.store_bean_id && (
+          <div className="mt-2 flex gap-3">
+            {(storeCards.find((c) => c.id === draft.store_bean_id)?.urls ?? []).map((u) => (
+              <div key={u} className="h-28 w-28 overflow-hidden rounded-xl bg-cream-deep">
+                <img src={u} alt="" className="h-full w-full object-contain" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h3 className="mb-2 mt-6 text-sm font-medium">卸用の写真（最大{MAX_IMAGES}枚・豆カードより先に表示）</h3>
         <div className="flex flex-wrap gap-3">
           {draft.image_urls.map((u, i) => (
             <div key={u} className="relative h-28 w-28 overflow-hidden rounded-xl bg-cream-deep">

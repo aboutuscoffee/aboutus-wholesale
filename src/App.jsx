@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchBeans, toBean } from './lib/db';
+import { fetchBeans, fetchStoreCards, toBean } from './lib/db';
 import { makeT, optionsFor, yen } from './i18n';
 import { ORDER_EMAIL } from './config';
 import BeanCard from './components/BeanCard';
@@ -60,6 +60,7 @@ export default function App() {
   const [cart, setCart] = usePersisted('ws-cart', []);
   const [view, setView] = usePersisted('ws-view', 'list');
   const [rows, setRows] = useState(null);
+  const [storeCards, setStoreCards] = useState([]);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [country, setCountry] = useState('');
@@ -75,6 +76,7 @@ export default function App() {
 
   useEffect(() => {
     fetchBeans().then(setRows).catch((e) => setError(e.message));
+    fetchStoreCards().then(setStoreCards);
   }, []);
 
   useEffect(() => {
@@ -82,7 +84,14 @@ export default function App() {
   }, [lang]);
 
   // media は写真・紹介文などを含むDBの行そのもの（豆IDで引く）
-  const media = useMemo(() => Object.fromEntries((rows ?? []).map((r) => [r.id, r])), [rows]);
+  // 表示する画像 = 卸で登録した写真 + 紐付けた店頭の豆カード
+  const media = useMemo(() => {
+    const cards = Object.fromEntries(storeCards.map((c) => [c.id, c.urls]));
+    return Object.fromEntries((rows ?? []).map((r) => {
+      const linked = (r.store_bean_id && cards[r.store_bean_id]) || [];
+      return [r.id, { ...r, display_images: [...new Set([...(r.image_urls ?? []), ...linked])] }];
+    }));
+  }, [rows, storeCards]);
   const beans = useMemo(
     () => (rows ?? []).filter((r) => admin.ok || !r.hidden).map(toBean),
     [rows, admin.ok]
@@ -126,12 +135,24 @@ export default function App() {
     const price = (b) => b.wholesale ?? Infinity;
     if (sort === 'recommend') list = [...list].sort((a, b) => recommendScore(a, media[a.key]) - recommendScore(b, media[b.key]));
     if (sort === 'priceAsc') list = [...list].sort((a, b) => price(a) - price(b));
-    if (sort === 'priceDesc') list = [...list].sort((a, b) => (b.wholesale ?? 0) - (a.wholesale ?? 0));
+    if (sort === 'priceDesc' || sort === 'rankPriceDesc') list = [...list].sort((a, b) => (b.wholesale ?? 0) - (a.wholesale ?? 0));
+    if (sort === 'rankPriceAsc') list = [...list].sort((a, b) => price(a) - price(b));
     // 売り切れは常に後ろへ
     return [...list].sort((a, b) => Number(a.stock.soldOut) - Number(b.stock.soldOut));
   }, [beans, media, query, country, rank, inStock, sort]);
 
   const groups = useMemo(() => {
+    // ランク別：ランクの高い順にまとめ、各ランクの中は価格順（ランクなし＝オリジナルブレンド等は最後）
+    if (sort === 'rankPriceDesc' || sort === 'rankPriceAsc') {
+      const order = [...RANK_ORDER, ''];
+      return order
+        .map((r) => ({
+          id: r || 'Original Blend',
+          ja: r ? '' : 'オリジナルブレンド',
+          items: filtered.filter((b) => (RANK_ORDER.includes(b.rank) ? b.rank : '') === r),
+        }))
+        .filter((g) => g.items.length);
+    }
     if (sort !== 'origin') return [{ id: 'all', items: filtered }];
     const map = new Map();
     for (const b of filtered) {
@@ -287,6 +308,8 @@ export default function App() {
                 </select>
                 <select value={sort} onChange={(e) => setSort(e.target.value)} className="rounded-full border border-cream-line bg-white px-4 py-2.5 text-sm">
                   <option value="origin">{t.sortOrigin}</option>
+                  <option value="rankPriceDesc">{t.sortRankPriceDesc}</option>
+                  <option value="rankPriceAsc">{t.sortRankPriceAsc}</option>
                   <option value="recommend">{t.sortRecommend}</option>
                   <option value="priceAsc">{t.sortPriceAsc}</option>
                   <option value="priceDesc">{t.sortPriceDesc}</option>
@@ -422,6 +445,7 @@ export default function App() {
         <AdminEditor
           row={editKey === NEW_BEAN ? null : media[editKey]}
           rows={rows ?? []}
+          storeCards={storeCards}
           onClose={() => setEditKey(null)}
           onSaved={(saved) => setRows((prev) => {
             const exists = prev.some((r) => r.id === saved.id);
