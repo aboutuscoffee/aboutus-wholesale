@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { yen } from '../i18n';
 import { ORDER_EMAIL, SHOP_NAME, TAX_RATE } from '../config';
+import { placeOrder } from '../lib/db';
 
 const FORM_KEY = 'ws-order-form';
 
@@ -12,9 +13,34 @@ function loadForm() {
   }
 }
 
-export default function CartDrawer({ open, items, t, onClose, onQty, onRemove }) {
+export default function CartDrawer({ open, items, t, account, onAuth, onOrdered, onClose, onQty, onRemove }) {
   const [form, setForm] = useState(loadForm);
   const [copied, setCopied] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  const [orderError, setOrderError] = useState('');
+  const [placed, setPlaced] = useState(null);
+  const member = account?.isApproved;
+  const profile = account?.profile;
+
+  // 承認済みの取引先：アプリ内で注文を確定（金額はサーバー側で再計算）
+  const submitOrder = async () => {
+    setOrderError('');
+    setPlacing(true);
+    try {
+      const order = await placeOrder(
+        items.map((i) => ({ bean_id: i.key, option: i.option, qty: i.qty })),
+        form.delivery ?? '',
+        form.note ?? '',
+      );
+      setPlaced(order);
+      setForm((f) => ({ ...f, delivery: '', note: '' }));
+      onOrdered?.(order);
+    } catch (e) {
+      setOrderError(e.message);
+    } finally {
+      setPlacing(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -83,7 +109,15 @@ export default function CartDrawer({ open, items, t, onClose, onQty, onRemove })
         </header>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {empty ? (
+          {placed ? (
+            <div className="py-12 text-center">
+              <div className="text-4xl">✓</div>
+              <p className="mt-3 font-serif text-2xl font-semibold">{t.order.thanks}</p>
+              <p className="mt-2 text-sm text-ink-soft">{t.order.number} #{placed.order_no} ・ {t.total} {yen(placed.total)}</p>
+              <p className="mt-4 text-xs leading-relaxed text-ink-mute">{t.order.thanksNote}</p>
+              <button type="button" onClick={() => { setPlaced(null); onClose(); }} className="mt-6 rounded-full bg-ink px-6 py-2.5 text-sm text-white">{t.close}</button>
+            </div>
+          ) : empty ? (
             <p className="py-16 text-center text-sm text-ink-mute">{t.cartEmpty}</p>
           ) : (
             <ul className="space-y-3">
@@ -109,7 +143,7 @@ export default function CartDrawer({ open, items, t, onClose, onQty, onRemove })
             </ul>
           )}
 
-          {!empty && (
+          {!empty && !placed && (
             <>
               <dl className="mt-5 space-y-1.5 text-sm">
                 <div className="flex justify-between"><dt className="text-ink-soft">{t.subtotal}</dt><dd>{yen(subtotal)}</dd></div>
@@ -120,18 +154,53 @@ export default function CartDrawer({ open, items, t, onClose, onQty, onRemove })
               </dl>
               <p className="mt-2 text-xs text-ink-mute">{t.shippingNote}</p>
 
-              <h3 className="mb-3 mt-6 text-sm font-medium">{t.orderForm}</h3>
-              <div className="space-y-2.5">
-                {['company', 'person', 'contact', 'delivery'].map((k) => (
-                  <input key={k} placeholder={t[k]} {...field(k)} className="w-full rounded-xl border border-cream-line bg-white px-3 py-2.5 text-sm placeholder:text-ink-mute" />
-                ))}
-                <textarea placeholder={t.note} rows={3} {...field('note')} className="w-full rounded-xl border border-cream-line bg-white px-3 py-2.5 text-sm placeholder:text-ink-mute" />
-              </div>
+              {member ? (
+                <>
+                  <h3 className="mb-2 mt-6 text-sm font-medium">{t.order.shipTo}</h3>
+                  <div className="rounded-xl bg-white p-3 text-sm leading-relaxed ring-1 ring-cream-line">
+                    <div className="font-medium">{profile.shipping_name || profile.shop_name}</div>
+                    <div className="text-ink-soft">〒{profile.postal_code} {profile.address}</div>
+                    <div className="text-xs text-ink-mute">{profile.contact_name} / {profile.phone}</div>
+                    <div className="mt-1 text-[11px] text-ink-mute">{t.order.changeInAccount}</div>
+                  </div>
+                  <div className="mt-3 space-y-2.5">
+                    <input placeholder={t.delivery} {...field('delivery')} className="w-full rounded-xl border border-cream-line bg-white px-3 py-2.5 text-sm placeholder:text-ink-mute" />
+                    <textarea placeholder={t.note} rows={3} {...field('note')} className="w-full rounded-xl border border-cream-line bg-white px-3 py-2.5 text-sm placeholder:text-ink-mute" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {account?.user ? (
+                    <p className="mt-6 rounded-xl bg-gold/15 p-3 text-xs leading-relaxed text-ink">{t.account.pending}</p>
+                  ) : (
+                    <button type="button" onClick={onAuth} className="mt-6 w-full rounded-xl bg-sea-pale p-3 text-left text-xs leading-relaxed text-sea-deep">
+                      {t.order.loginPrompt} <span className="underline">{t.auth.loginOrRegister}</span>
+                    </button>
+                  )}
+                  <h3 className="mb-3 mt-6 text-sm font-medium">{t.orderForm}</h3>
+                  <div className="space-y-2.5">
+                    {['company', 'person', 'contact', 'delivery'].map((k) => (
+                      <input key={k} placeholder={t[k]} {...field(k)} className="w-full rounded-xl border border-cream-line bg-white px-3 py-2.5 text-sm placeholder:text-ink-mute" />
+                    ))}
+                    <textarea placeholder={t.note} rows={3} {...field('note')} className="w-full rounded-xl border border-cream-line bg-white px-3 py-2.5 text-sm placeholder:text-ink-mute" />
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
 
-        {!empty && (
+        {!empty && !placed && member && (
+          <footer className="space-y-2 border-t border-cream-line bg-cream px-5 py-4">
+            {orderError && <p className="text-sm text-rust">{orderError}</p>}
+            <button type="button" onClick={submitOrder} disabled={placing} className="w-full rounded-full bg-ink py-3 text-sm font-medium text-white hover:bg-sea-deep disabled:opacity-50">
+              {placing ? '…' : `${t.order.place} · ${yen(total)}`}
+            </button>
+            <p className="pt-1 text-[11px] leading-relaxed text-ink-mute">{t.order.placeNote}</p>
+          </footer>
+        )}
+
+        {!empty && !placed && !member && (
           <footer className="space-y-2 border-t border-cream-line bg-cream px-5 py-4">
             <a href={mailHref()} className="block rounded-full bg-ink py-3 text-center text-sm font-medium text-white hover:bg-sea-deep">{t.sendMail}</a>
             <div className="flex gap-2">

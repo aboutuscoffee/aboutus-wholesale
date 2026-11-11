@@ -70,6 +70,7 @@ export default function BeanRow({ bean, media, t, onOpen, onQuickAdd, onAddSh400
           <span className="lg:hidden">{t.stock} </span>{soldOut ? t.soldOut : bean.stock.text || '—'}
         </div>
         <div className="ml-auto text-right lg:ml-0">
+          {bean.special != null && <div className="text-[10px] text-rust">{t.special} <span className="text-ink-mute line-through">{yen(bean.special)}</span></div>}
           <div className="font-serif text-xl font-semibold leading-none text-ink">{yen(price)}</div>
           <div className="mt-0.5 text-[10px] text-ink-mute">{`/kg ${t.exTax}`}</div>
         </div>

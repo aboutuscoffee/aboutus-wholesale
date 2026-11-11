@@ -59,6 +59,7 @@ export default function BeanCard({ bean, media, t, lang, onOpen, onQuickAdd, onA
             <div className="text-[11px] text-ink-mute">
               {`${t.wholesale1kg}（${t.exTax}）`}
             </div>
+            {bean.special != null && <div className="text-[11px] text-rust">{t.special} <span className="text-ink-mute line-through">{yen(bean.special)}</span></div>}
             <div className="font-serif text-2xl font-semibold tracking-tight text-ink">{yen(price)}</div>
             <div className={`text-[11px] ${soldOut ? 'text-rust' : 'text-ink-mute'}`}>
               {t.stock} {soldOut ? t.soldOut : bean.stock.text || '—'}

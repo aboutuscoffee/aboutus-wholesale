@@ -87,3 +87,80 @@ export function toBean(row) {
     sh400: row.price_sh400,
   };
 }
+
+// ===== 取引先・注文 =====
+const APP_URL = 'https://aboutuscoffee.github.io/aboutus-wholesale/';
+
+export async function signUp({ email, password, shop_name, contact_name, phone, postal_code, address }) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: APP_URL,
+      data: { app: 'aboutus-wholesale', shop_name, contact_name, phone, postal_code, address },
+    },
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function signIn(email, password) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(error.message === 'Invalid login credentials' ? 'メールアドレスかパスワードが違います' : error.message);
+}
+
+export async function signOut() {
+  await supabase.auth.signOut();
+}
+
+export async function fetchMyProfile(userId) {
+  const { data, error } = await supabase.from('ws_customers').select('*').eq('id', userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateCustomer(id, fields) {
+  const { data, error } = await supabase.from('ws_customers').update(fields).eq('id', id).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function fetchCustomerPrices(customerId) {
+  const { data, error } = await supabase.from('ws_customer_prices').select('*').eq('customer_id', customerId);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function saveCustomerPrices(customerId, rows) {
+  const { error: delErr } = await supabase.from('ws_customer_prices').delete().eq('customer_id', customerId);
+  if (delErr) throw new Error(delErr.message);
+  if (!rows.length) return;
+  const { error } = await supabase.from('ws_customer_prices').insert(rows.map((r) => ({ ...r, customer_id: customerId })));
+  if (error) throw new Error(error.message);
+}
+
+export async function placeOrder(items, desiredDate, note) {
+  const { data, error } = await supabase.rpc('ws_place_order', { p_items: items, p_desired_date: desiredDate, p_note: note });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function fetchOrders(customerId) {
+  let q = supabase.from('ws_orders').select('*').order('created_at', { ascending: false });
+  if (customerId) q = q.eq('customer_id', customerId);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function updateOrder(id, fields) {
+  const { data, error } = await supabase.from('ws_orders').update({ ...fields, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function fetchCustomers() {
+  const { data, error } = await supabase.from('ws_customers').select('*').order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}

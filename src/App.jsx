@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchBeans, fetchStoreCards, toBean } from './lib/db';
+import { fetchBeans, fetchCustomers, fetchOrders, fetchStoreCards, toBean } from './lib/db';
 import { makeT, optionsFor, yen } from './i18n';
 import { ORDER_EMAIL } from './config';
 import BeanCard from './components/BeanCard';
@@ -8,6 +8,10 @@ import BeanDetail from './components/BeanDetail';
 import BeanVisual from './components/BeanVisual';
 import CartDrawer from './components/CartDrawer';
 import AdminEditor from './components/AdminEditor';
+import AdminPanel from './components/AdminPanel';
+import AuthModal from './components/AuthModal';
+import AccountPanel from './components/AccountPanel';
+import { useAccount } from './lib/useAccount';
 import { RANK_ORDER } from './components/Badges';
 
 const BASE = import.meta.env.BASE_URL;
@@ -28,26 +32,6 @@ function usePersisted(key, initial) {
     } catch { /* 保存できなくても動作に影響なし */ }
   }, [key, value]);
   return [value, setValue];
-}
-
-function useAdmin() {
-  const wants = new URLSearchParams(window.location.search).has('admin');
-  const [ok, setOk] = useState(() => {
-    try {
-      return sessionStorage.getItem('ws-admin') === '1';
-    } catch {
-      return false;
-    }
-  });
-  const login = (pw) => {
-    if (pw && pw === import.meta.env.VITE_ADMIN_PASSWORD) {
-      try { sessionStorage.setItem('ws-admin', '1'); } catch { /* noop */ }
-      setOk(true);
-      return true;
-    }
-    return false;
-  };
-  return { wants, ok, login };
 }
 
 function recommendScore(bean, media) {
@@ -71,7 +55,14 @@ export default function App() {
   const [editKey, setEditKey] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [toast, setToast] = useState('');
-  const admin = useAdmin();
+  const [adminBadge, setAdminBadge] = useState(0);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const account = useAccount();
+  // 管理者は Supabase のログイン（ws_customers.role = 'admin'）で判定する
+  const admin = { ok: account.isAdmin };
+  const wantsAdmin = new URLSearchParams(window.location.search).has('admin');
   const t = makeT(lang);
 
   useEffect(() => {
@@ -92,10 +83,34 @@ export default function App() {
       return [r.id, { ...r, display_images: [...new Set([...(r.image_urls ?? []), ...linked])] }];
     }));
   }, [rows, storeCards]);
+  // 承認済みの取引先には、取引先別の特別価格があればそれを表示する
   const beans = useMemo(
-    () => (rows ?? []).filter((r) => admin.ok || !r.hidden).map(toBean),
-    [rows, admin.ok]
+    () => (rows ?? []).filter((r) => admin.ok || !r.hidden).map((r) => {
+      const b = toBean(r);
+      const sp = account.prices[r.id];
+      if (!sp) return b;
+      return {
+        ...b,
+        wholesale: sp.price_1kg ?? b.wholesale,
+        sh400: sp.price_sh400 ?? b.sh400,
+        special: sp.price_1kg != null && sp.price_1kg !== b.wholesale ? b.wholesale : null,
+      };
+    }),
+    [rows, admin.ok, account.prices]
   );
+
+  // 管理者には新着注文・承認待ちの件数を「管理」ボタンに表示する
+  useEffect(() => {
+    if (!account.isAdmin) return;
+    Promise.all([fetchOrders(), fetchCustomers()])
+      .then(([o, c]) => setAdminBadge(o.filter((x) => x.status === 'received').length + c.filter((x) => x.status === 'pending').length))
+      .catch(() => {});
+  }, [account.isAdmin]);
+
+  // ?admin 付きで開いたときに未ログインならログイン画面を出す
+  useEffect(() => {
+    if (wantsAdmin && !account.loading && !account.user) setAuthOpen(true);
+  }, [wantsAdmin, account.loading, account.user]);
   const ready = rows != null && (rows.length > 0 || admin.ok);
 
   // シート更新で価格が変わった場合に備え、カートの価格は常に最新シートから引き直す
@@ -195,8 +210,6 @@ export default function App() {
   const directCount = beans.filter((b) => b.labels.includes('directTrade')).length;
   const inquiryHref = `mailto:${ORDER_EMAIL}?subject=${encodeURIComponent(t.inquirySubject)}`;
 
-  if (admin.wants && !admin.ok) return <AdminLogin onLogin={admin.login} />;
-
   return (
     <div className="min-h-screen overflow-x-clip">
       {/* Header */}
@@ -211,6 +224,20 @@ export default function App() {
           </a>
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
             <Segmented value={lang} onChange={setLang} options={[['ja', 'JA'], ['en', 'EN']]} />
+            {admin.ok && (
+              <button type="button" onClick={() => setAdminOpen(true)} className="relative rounded-full bg-rust px-3 py-2 text-xs font-medium text-white sm:px-4 sm:text-sm">
+                管理
+                {adminBadge > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1 text-[11px]">{adminBadge}</span>}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => (account.user ? setAccountOpen(true) : setAuthOpen(true))}
+              className="flex max-w-[9rem] items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs ring-1 ring-cream-line hover:ring-ink sm:max-w-[14rem] sm:text-sm"
+            >
+              <UserIcon />
+              <span className="hidden truncate sm:inline">{account.user ? (account.profile?.shop_name || t.account.title) : t.auth.login}</span>
+            </button>
             <button
               type="button"
               onClick={() => setCartOpen(true)}
@@ -224,6 +251,11 @@ export default function App() {
             </button>
           </div>
         </div>
+        {account.user && account.profile && !account.isApproved && (
+          <button type="button" onClick={() => setAccountOpen(true)} className="block w-full bg-gold/20 px-4 py-1 text-center text-xs text-ink">
+            {account.profile.status === 'suspended' ? t.account.suspended : t.account.pending}
+          </button>
+        )}
         {admin.ok && (
           <div className="bg-rust px-4 py-1 text-center text-xs text-white">
             管理者モード<span className="hidden sm:inline"> — 各豆の「編集」から内容を変更、「＋ 豆を追加」で新規登録できます</span>
@@ -456,7 +488,14 @@ export default function App() {
         />
       )}
 
+      {authOpen && <AuthModal t={t} onClose={() => setAuthOpen(false)} onLoggedIn={() => account.refresh()} />}
+      {accountOpen && account.profile && <AccountPanel t={t} account={account} onClose={() => setAccountOpen(false)} />}
+      {adminOpen && admin.ok && <AdminPanel t={t} beans={beans} onClose={() => setAdminOpen(false)} onPendingCount={setAdminBadge} />}
+
       <CartDrawer
+        account={account}
+        onAuth={() => { setCartOpen(false); setAuthOpen(true); }}
+        onOrdered={() => setCart([])}
         open={cartOpen}
         items={cartItems}
         t={t}
@@ -525,20 +564,11 @@ function CartIcon() {
   );
 }
 
-function AdminLogin({ onLogin }) {
-  const [pw, setPw] = useState('');
-  const [ng, setNg] = useState(false);
+function UserIcon() {
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
-      <form
-        onSubmit={(e) => { e.preventDefault(); setNg(!onLogin(pw)); }}
-        className="w-full max-w-xs space-y-3 rounded-3xl bg-white p-6 ring-1 ring-cream-line"
-      >
-        <h1 className="font-serif text-xl font-semibold">管理者ログイン</h1>
-        <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="パスワード" className="w-full rounded-xl border border-cream-line px-3 py-2.5 text-sm" autoFocus />
-        {ng && <p className="text-xs text-rust">パスワードが違います</p>}
-        <button type="submit" className="w-full rounded-full bg-ink py-2.5 text-sm text-white">ログイン</button>
-      </form>
-    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+    </svg>
   );
 }
