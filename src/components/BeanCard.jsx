@@ -49,7 +49,7 @@ export default function BeanCard({ bean, media, t, lang, onOpen, onQuickAdd, onA
           </div>
         )}
 
-        {bean.sh400 && (
+        {(bean.sh400 || bean.hasSh400) && (
           <div className="mt-4">
             <StrongHoldOption bean={bean} t={t} soldOut={soldOut} onAdd={onAddSh400} size="stack" />
           </div>

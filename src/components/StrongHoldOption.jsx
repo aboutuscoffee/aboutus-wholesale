@@ -1,10 +1,23 @@
 import { yen } from '../i18n';
+import LockedPrice from './LockedPrice';
 
 // トップロット限定の「Strong Hold 400g 焙煎」オプション。価格がある豆だけ表示する
 // size: 'md'（詳細画面）/ 'sm'（リストの1行）/ 'stack'（カード内・2段組み）
 // 'sm' はスマホ幅、'md' はタブレット幅以下で自動的に2段組みになる
 export default function StrongHoldOption({ bean, t, soldOut, onAdd, size = 'md' }) {
-  if (!bean.sh400) return null;
+  if (!bean.sh400 && !bean.hasSh400) return null;
+
+  // 価格を見られない人（未ログイン・承認前）には「対応している」ことだけを見せる
+  if (bean.locked) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gold/60 bg-[#fbf6ec] px-3 py-2">
+        <span className="shrink-0 rounded-full bg-gold px-2 py-0.5 text-[10px] font-semibold tracking-wider text-white">{t.shOption}</span>
+        <span className="text-xs font-medium text-ink">{t.shName}</span>
+        <span className="text-[11px] text-ink-mute">{t.shAvailable}</span>
+        {size !== 'sm' && <span className="ml-auto"><LockedPrice t={t} pending={bean.pending} /></span>}
+      </div>
+    );
+  }
 
   const tag = <span className="shrink-0 rounded-full bg-gold px-2 py-0.5 text-[10px] font-semibold tracking-wider text-white">{t.shOption}</span>;
   const price = (cls) => (

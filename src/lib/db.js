@@ -6,7 +6,7 @@ const BEAN_COLUMNS = [
   'id', 'sort_order', 'country', 'country_ja', 'is_blend', 'rank', 'labels', 'name', 'subtitle', 'process', 'producer',
   'region', 'altitude', 'variety', 'components', 'crop', 'roast', 'flavor', 'story', 'stock', 'sold_out', 'info_card',
   'image_urls', 'catch_ja', 'catch_en', 'description_ja', 'description_en', 'sample_available', 'featured', 'hidden',
-  'updated_at', 'store_bean_id',
+  'updated_at', 'store_bean_id', 'has_sh400',
 ].join(',');
 
 export async function fetchBeans() {
@@ -42,7 +42,8 @@ function parseCardUrls(value) {
 }
 
 export async function saveBean(row) {
-  const { updated_at, display_images, ...rest } = row;
+  // has_sh400 は価格から自動計算される列なので送らない
+  const { updated_at, display_images, has_sh400, ...rest } = row;
   const { data, error } = await supabase
     .from('ws_beans')
     .upsert({ ...rest, updated_at: new Date().toISOString() })
@@ -93,6 +94,7 @@ export function toBean(row) {
     story: row.story,
     wholesale: row.price_1kg,
     sh400: row.price_sh400,
+    hasSh400: Boolean(row.has_sh400), // 価格が非公開でも Strong Hold 対応かは分かる
   };
 }
 

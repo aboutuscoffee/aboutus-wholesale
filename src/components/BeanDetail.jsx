@@ -134,7 +134,10 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
             )}
 
             {bean.locked ? (
-              <div className="mt-6"><LockedPrice t={t} pending={bean.pending} size="lg" /></div>
+              <div className="mt-6 space-y-3">
+                <StrongHoldOption bean={bean} t={t} soldOut={soldOut} />
+                <LockedPrice t={t} pending={bean.pending} size="lg" />
+              </div>
             ) : (
             <>
             <div className="mt-6 overflow-hidden rounded-2xl bg-white ring-1 ring-cream-line">

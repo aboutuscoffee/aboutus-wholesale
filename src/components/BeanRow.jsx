@@ -96,7 +96,7 @@ export default function BeanRow({ bean, media, t, onOpen, onQuickAdd, onAddSh400
         </div>
       </div>
 
-      {bean.sh400 && (
+      {(bean.sh400 || bean.hasSh400) && (
         <div className="mt-2 lg:col-[2/-1] lg:mt-1">
           <StrongHoldOption bean={bean} t={t} soldOut={soldOut} onAdd={onAddSh400} size="sm" />
         </div>
