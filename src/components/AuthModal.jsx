@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { requestPasswordReset, signIn, signUp } from '../lib/db';
+import { getRememberLogin } from '../lib/supabase';
 
 const input = 'w-full rounded-xl border border-cream-line bg-white px-3 py-2.5 text-sm text-ink placeholder:text-ink-mute';
 
@@ -7,6 +8,7 @@ export default function AuthModal({ t, initialTab = 'login', onClose, onLoggedIn
   const [tab, setTab] = useState(initialTab);
   const [form, setForm] = useState({ email: '', password: '', shop_name: '', contact_name: '', phone: '', postal_code: '', address: '', message: '' });
   const [busy, setBusy] = useState(false);
+  const [remember, setRemember] = useState(getRememberLogin);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
 
@@ -22,7 +24,7 @@ export default function AuthModal({ t, initialTab = 'login', onClose, onLoggedIn
         await requestPasswordReset(form.email.trim(), form.shop_name.trim(), form.message.trim());
         setDone(true);
       } else if (tab === 'login') {
-        await signIn(form.email.trim(), form.password);
+        await signIn(form.email.trim(), form.password, remember);
         onLoggedIn?.();
         onClose();
       } else {
@@ -88,6 +90,15 @@ export default function AuthModal({ t, initialTab = 'login', onClose, onLoggedIn
                   <input placeholder={t.auth.postal} {...field('postal_code')} className={input} />
                   <textarea rows={2} placeholder={t.auth.address} {...field('address')} className={input} />
                 </>
+              )}
+              {tab === 'login' && (
+                <label className="flex cursor-pointer items-start gap-2 py-1 text-sm text-ink-soft">
+                  <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="mt-0.5 accent-ink" />
+                  <span>
+                    {t.auth.remember}
+                    <span className="block text-[11px] text-ink-mute">{t.auth.rememberNote}</span>
+                  </span>
+                </label>
               )}
               {error && <p className="text-sm text-rust">{error}</p>}
               <button type="submit" disabled={busy} className="w-full rounded-full bg-ink py-3 text-sm font-medium text-white hover:bg-sea-deep disabled:opacity-50">

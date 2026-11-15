@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { setRememberLogin, supabase } from './supabase';
 
 // 卸カタログの豆データ（ws_beans）。初期データは scripts/seed.sql（スプレッドシートの表示列から作成）
 // 価格（price_1kg / price_sh400）はデータベース側で非公開。価格は fetchPrices() で取得する
@@ -112,7 +112,8 @@ export async function signUp({ email, password, shop_name, contact_name, phone, 
   return data;
 }
 
-export async function signIn(email, password) {
+export async function signIn(email, password, remember = true) {
+  setRememberLogin(remember);
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message === 'Invalid login credentials' ? 'メールアドレスかパスワードが違います' : error.message);
 }
