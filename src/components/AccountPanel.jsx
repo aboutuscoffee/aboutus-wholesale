@@ -19,6 +19,11 @@ export function OrderItems({ order, t }) {
           <span className="min-w-0">
             {i.name}
             <span className="ml-1 text-xs text-ink-mute">{t.options[i.option] ?? i.option} × {i.qty}</span>
+            {i.info_card != null && (
+              <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] ${i.info_card ? 'bg-sea/15 text-sea-deep' : 'bg-cream-deep text-ink-mute'}`}>
+                {t.card.label}：{i.info_card ? t.card.need : t.card.noNeed}
+              </span>
+            )}
           </span>
           <span className="shrink-0">{yen(i.amount)}</span>
         </li>

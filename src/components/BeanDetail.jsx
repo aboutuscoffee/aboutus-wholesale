@@ -4,6 +4,7 @@ import { RankBadge, LabelBadges } from './Badges';
 import { optionsFor, yen } from '../i18n';
 import StrongHoldOption from './StrongHoldOption';
 import LockedPrice from './LockedPrice';
+import CardChoice from './CardChoice';
 
 function Spec({ label, value }) {
   if (!value) return null;
@@ -21,6 +22,7 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
   const [qty, setQty] = useState(1);
   const [photo, setPhoto] = useState(0);
   const [added, setAdded] = useState(false);
+  const [card, setCard] = useState(null); // インフォメーションカードの要否
   const soldOut = bean.stock.soldOut;
   const images = media?.display_images ?? media?.image_urls ?? [];
   const description = lang === 'en' ? media?.description_en || media?.description_ja : media?.description_ja || media?.description_en;
@@ -39,7 +41,7 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
   const selected = all.find((o) => o.id === option);
   const handleAdd = () => {
     if (!selected) return;
-    onAdd(bean, selected.id, qty);
+    onAdd(bean, selected.id, qty, bean.infoCard ? card ?? undefined : undefined);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
@@ -156,12 +158,18 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
                   bean={bean}
                   t={t}
                   soldOut={soldOut}
-                  onAdd={() => { setOption('sh400'); onAdd(bean, 'sh400', 1); setAdded(true); setTimeout(() => setAdded(false), 1500); }}
+                  onAdd={() => { setOption('sh400'); onAdd(bean, 'sh400', 1, bean.infoCard ? card ?? undefined : undefined); setAdded(true); setTimeout(() => setAdded(false), 1500); }}
                 />
               </div>
             )}
 
             <div className="sticky bottom-0 -mx-5 mt-6 border-t border-cream-line bg-cream/95 px-5 py-4 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
+              {bean.infoCard && (
+                <div className="mb-3">
+                  <span className="mb-1 block text-[11px] text-ink-mute">{t.card.label}</span>
+                  <CardChoice t={t} value={card} onChange={setCard} />
+                </div>
+              )}
               <div className="flex flex-wrap items-end gap-3">
                 <label className="min-w-[10rem] flex-1">
                   <span className="mb-1 block text-[11px] text-ink-mute">{t.option}</span>

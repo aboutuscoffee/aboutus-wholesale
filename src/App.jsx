@@ -132,7 +132,7 @@ export default function App() {
         const bean = byKey[c.key];
         if (!bean || bean.stock.soldOut) return null;
         const opt = optionsFor(bean).find((o) => o.id === c.option);
-        return opt ? { ...c, title: bean.title, price: opt.price } : null;
+        return opt ? { ...c, title: bean.title, price: opt.price, hasInfoCard: bean.infoCard } : null;
       })
       .filter(Boolean);
   }, [cart, beans]);
@@ -197,12 +197,13 @@ export default function App() {
       .slice(0, 8);
   }, [beans, media]);
 
-  const addToCart = useCallback((bean, option, qty = 1) => {
+  // infoCard: インフォメーションカードの要否（true / false）。未選択は undefined のまま、カートで選んでもらう
+  const addToCart = useCallback((bean, option, qty = 1, infoCard) => {
     setCart((c) => {
       const id = `${bean.key}::${option}`;
       const found = c.find((i) => i.id === id);
-      if (found) return c.map((i) => (i.id === id ? { ...i, qty: i.qty + qty } : i));
-      return [...c, { id, key: bean.key, option, qty }];
+      if (found) return c.map((i) => (i.id === id ? { ...i, qty: i.qty + qty, ...(infoCard != null ? { infoCard } : {}) } : i));
+      return [...c, { id, key: bean.key, option, qty, ...(infoCard != null ? { infoCard } : {}) }];
     });
     setToast(`${bean.title} — ${t.added}`);
     setTimeout(() => setToast(''), 1800);
@@ -522,6 +523,7 @@ export default function App() {
         account={account}
         onAuth={() => { setCartOpen(false); setAuthOpen(true); }}
         onOrdered={() => setCart([])}
+        onInfoCard={(id, value) => setCart((c) => c.map((i) => (i.id === id ? { ...i, infoCard: value } : i)))}
         open={cartOpen}
         items={cartItems}
         t={t}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { yen } from '../i18n';
 import { ORDER_EMAIL, SHOP_NAME, TAX_RATE } from '../config';
 import { placeOrder } from '../lib/db';
+import CardChoice from './CardChoice';
 
 const FORM_KEY = 'ws-order-form';
 
@@ -13,7 +14,7 @@ function loadForm() {
   }
 }
 
-export default function CartDrawer({ open, items, t, account, onAuth, onOrdered, onClose, onQty, onRemove }) {
+export default function CartDrawer({ open, items, t, account, onAuth, onOrdered, onInfoCard, onClose, onQty, onRemove }) {
   const [form, setForm] = useState(loadForm);
   const [copied, setCopied] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -22,13 +23,21 @@ export default function CartDrawer({ open, items, t, account, onAuth, onOrdered,
   const member = account?.isApproved;
   const profile = account?.profile;
 
+  // インフォメーションカードがある豆は「必要／不要」を必ず選んでもらう
+  const cardMissing = items.some((i) => i.hasInfoCard && i.infoCard == null);
+  const cardText = (i) => (i.hasInfoCard ? `  ${t.card.label}: ${i.infoCard == null ? '—' : i.infoCard ? t.card.need : t.card.noNeed}` : '');
+
   // 承認済みの取引先：アプリ内で注文を確定（金額はサーバー側で再計算）
   const submitOrder = async () => {
     setOrderError('');
+    if (cardMissing) {
+      setOrderError(t.card.required);
+      return;
+    }
     setPlacing(true);
     try {
       const order = await placeOrder(
-        items.map((i) => ({ bean_id: i.key, option: i.option, qty: i.qty })),
+        items.map((i) => ({ bean_id: i.key, option: i.option, qty: i.qty, ...(i.hasInfoCard ? { info_card: i.infoCard } : {}) })),
         form.delivery ?? '',
         form.note ?? '',
       );
@@ -64,7 +73,7 @@ export default function CartDrawer({ open, items, t, account, onAuth, onOrdered,
     const lines = [
       `${SHOP_NAME} ${t.orderSubject.replace(/[【】[\]]/g, '').trim()}`,
       '',
-      ...items.map((i) => `・${i.title}\n  ${t.options[i.option]} × ${i.qty}  ${yen(i.price * i.qty)}`),
+      ...items.map((i) => `・${i.title}\n  ${t.options[i.option]} × ${i.qty}  ${yen(i.price * i.qty)}${i.hasInfoCard ? `\n${cardText(i)}` : ''}`),
       '',
       `${t.subtotal}: ${yen(subtotal)}`,
       `${t.tax}: ${yen(tax)}`,
@@ -138,6 +147,14 @@ export default function CartDrawer({ open, items, t, account, onAuth, onOrdered,
                     </div>
                     <div className="font-semibold">{yen(i.price * i.qty)}</div>
                   </div>
+                  {i.hasInfoCard && (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-cream-line/70 pt-3">
+                      <span className={`text-xs ${i.infoCard == null ? 'font-medium text-gold' : 'text-ink-soft'}`}>
+                        {t.card.label}{i.infoCard == null && ` — ${t.card.choose}`}
+                      </span>
+                      <CardChoice t={t} value={i.infoCard ?? null} onChange={(v) => onInfoCard(i.id, v)} size="sm" />
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -193,7 +210,8 @@ export default function CartDrawer({ open, items, t, account, onAuth, onOrdered,
         {!empty && !placed && member && (
           <footer className="space-y-2 border-t border-cream-line bg-cream px-5 py-4">
             {orderError && <p className="text-sm text-rust">{orderError}</p>}
-            <button type="button" onClick={submitOrder} disabled={placing} className="w-full rounded-full bg-ink py-3 text-sm font-medium text-white hover:bg-sea-deep disabled:opacity-50">
+            {cardMissing && !orderError && <p className="text-xs text-gold">{t.card.required}</p>}
+            <button type="button" onClick={submitOrder} disabled={placing || cardMissing} className="w-full rounded-full bg-ink py-3 text-sm font-medium text-white hover:bg-sea-deep disabled:opacity-50">
               {placing ? '…' : `${t.order.place} · ${yen(total)}`}
             </button>
             <p className="pt-1 text-[11px] leading-relaxed text-ink-mute">{t.order.placeNote}</p>
