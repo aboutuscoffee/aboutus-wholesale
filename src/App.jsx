@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchBeans, fetchCustomers, fetchOrders, fetchStoreCards, toBean } from './lib/db';
+import { fetchBeans, fetchCustomers, fetchOrders, fetchResetRequests, fetchStoreCards, toBean } from './lib/db';
 import { makeT, optionsFor, yen } from './i18n';
 import { ORDER_EMAIL } from './config';
 import BeanCard from './components/BeanCard';
@@ -11,6 +11,7 @@ import AdminEditor from './components/AdminEditor';
 import AdminPanel from './components/AdminPanel';
 import AuthModal from './components/AuthModal';
 import AccountPanel from './components/AccountPanel';
+import SetPasswordModal from './components/SetPasswordModal';
 import { useAccount } from './lib/useAccount';
 import { RANK_ORDER } from './components/Badges';
 
@@ -83,27 +84,37 @@ export default function App() {
       return [r.id, { ...r, display_images: [...new Set([...(r.image_urls ?? []), ...linked])] }];
     }));
   }, [rows, storeCards]);
-  // 承認済みの取引先には、取引先別の特別価格があればそれを表示する
+  // 価格は承認済みの取引先・管理者にだけサーバーから届く（特別価格は反映済み）。それ以外は locked
+  const priceLocked = !account.isApproved;
+  const pending = Boolean(account.user && account.profile && !account.isApproved);
   const beans = useMemo(
     () => (rows ?? []).filter((r) => admin.ok || !r.hidden).map((r) => {
       const b = toBean(r);
-      const sp = account.prices[r.id];
-      if (!sp) return b;
+      const p = account.prices[r.id];
       return {
         ...b,
-        wholesale: sp.price_1kg ?? b.wholesale,
-        sh400: sp.price_sh400 ?? b.sh400,
-        special: sp.price_1kg != null && sp.price_1kg !== b.wholesale ? b.wholesale : null,
+        wholesale: p?.price_1kg ?? null,
+        sh400: p?.price_sh400 ?? null,
+        special: p && p.base_1kg != null && p.price_1kg !== p.base_1kg ? p.base_1kg : null,
+        locked: priceLocked,
+        pending,
       };
     }),
-    [rows, admin.ok, account.prices]
+    [rows, admin.ok, account.prices, priceLocked, pending]
   );
+
+  // 価格欄の「ログイン / 新規登録」ボタンからログイン画面を開く
+  useEffect(() => {
+    const open = () => setAuthOpen(true);
+    window.addEventListener('ws:open-auth', open);
+    return () => window.removeEventListener('ws:open-auth', open);
+  }, []);
 
   // 管理者には新着注文・承認待ちの件数を「管理」ボタンに表示する
   useEffect(() => {
     if (!account.isAdmin) return;
-    Promise.all([fetchOrders(), fetchCustomers()])
-      .then(([o, c]) => setAdminBadge(o.filter((x) => x.status === 'received').length + c.filter((x) => x.status === 'pending').length))
+    Promise.all([fetchOrders(), fetchCustomers(), fetchResetRequests()])
+      .then(([o, c, r]) => setAdminBadge(o.filter((x) => x.status === 'received').length + c.filter((x) => x.status === 'pending').length + r.length))
       .catch(() => {});
   }, [account.isAdmin]);
 
@@ -311,7 +322,7 @@ export default function App() {
                       <div className="text-[11px] tracking-[0.2em] opacity-80">{b.rank || 'BLEND'} · {b.country.toUpperCase()}</div>
                       <div className="mt-1 font-serif text-xl font-semibold leading-snug">{b.title}</div>
                       <div className="mt-1 line-clamp-1 text-xs opacity-80">{b.flavorNotes.slice(0, 3).join(' · ')}</div>
-                      <div className="mt-3 font-serif text-lg">{yen(b.wholesale)}<span className="ml-1 text-xs opacity-70">{t.perKg}</span></div>
+                      {!b.locked && <div className="mt-3 font-serif text-lg">{yen(b.wholesale)}<span className="ml-1 text-xs opacity-70">{t.perKg}</span></div>}
                     </div>
                   </button>
                 ))}
@@ -340,11 +351,11 @@ export default function App() {
                 </select>
                 <select value={sort} onChange={(e) => setSort(e.target.value)} className="rounded-full border border-cream-line bg-white px-4 py-2.5 text-sm">
                   <option value="origin">{t.sortOrigin}</option>
-                  <option value="rankPriceDesc">{t.sortRankPriceDesc}</option>
-                  <option value="rankPriceAsc">{t.sortRankPriceAsc}</option>
+                  <option value="rankPriceDesc">{priceLocked ? t.sortRank : t.sortRankPriceDesc}</option>
+                  {!priceLocked && <option value="rankPriceAsc">{t.sortRankPriceAsc}</option>}
                   <option value="recommend">{t.sortRecommend}</option>
-                  <option value="priceAsc">{t.sortPriceAsc}</option>
-                  <option value="priceDesc">{t.sortPriceDesc}</option>
+                  {!priceLocked && <option value="priceAsc">{t.sortPriceAsc}</option>}
+                  {!priceLocked && <option value="priceDesc">{t.sortPriceDesc}</option>}
                 </select>
                 <label className="flex cursor-pointer items-center gap-2 rounded-full border border-cream-line bg-white px-4 py-2.5 text-sm">
                   <input type="checkbox" checked={inStock} onChange={(e) => setInStock(e.target.checked)} className="accent-ink" />
@@ -364,6 +375,16 @@ export default function App() {
               </div>
             </div>
 
+            {priceLocked && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-sea-pale px-4 py-3 text-sm text-sea-deep">
+                <span>{pending ? t.locked.pendingBody : t.locked.banner}</span>
+                {!pending && (
+                  <button type="button" onClick={() => setAuthOpen(true)} className="rounded-full bg-sea-deep px-4 py-2 text-xs font-medium text-white">
+                    {t.auth.loginOrRegister}
+                  </button>
+                )}
+              </div>
+            )}
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <p className="text-xs text-ink-mute">{filtered.length} {t.results}</p>
@@ -477,17 +498,22 @@ export default function App() {
         <AdminEditor
           row={editKey === NEW_BEAN ? null : media[editKey]}
           rows={rows ?? []}
+          prices={account.prices}
           storeCards={storeCards}
           onClose={() => setEditKey(null)}
-          onSaved={(saved) => setRows((prev) => {
-            const exists = prev.some((r) => r.id === saved.id);
-            const next = exists ? prev.map((r) => (r.id === saved.id ? saved : r)) : [...prev, saved];
-            return next.sort((a, b) => a.sort_order - b.sort_order);
-          })}
+          onSaved={(saved) => {
+            setRows((prev) => {
+              const exists = prev.some((r) => r.id === saved.id);
+              const next = exists ? prev.map((r) => (r.id === saved.id ? saved : r)) : [...prev, saved];
+              return next.sort((a, b) => a.sort_order - b.sort_order);
+            });
+            account.refresh(); // 価格は別経路なので取り直す
+          }}
           onDeleted={(id) => setRows((prev) => prev.filter((r) => r.id !== id))}
         />
       )}
 
+      {account.recovery && <SetPasswordModal t={t} onDone={account.endRecovery} />}
       {authOpen && <AuthModal t={t} onClose={() => setAuthOpen(false)} onLoggedIn={() => account.refresh()} />}
       {accountOpen && account.profile && <AccountPanel t={t} account={account} onClose={() => setAccountOpen(false)} />}
       {adminOpen && admin.ok && <AdminPanel t={t} beans={beans} onClose={() => setAdminOpen(false)} onPendingCount={setAdminBadge} />}

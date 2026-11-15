@@ -27,12 +27,15 @@ function Field({ label, children, wide }) {
   );
 }
 
-export default function AdminEditor({ row, rows, storeCards = [], onClose, onSaved, onDeleted }) {
+export default function AdminEditor({ row, rows, prices = {}, storeCards = [], onClose, onSaved, onDeleted }) {
   const isNew = !row;
   const [draft, setDraft] = useState(() => ({
     ...EMPTY,
     sort_order: (rows.reduce((m, r) => Math.max(m, r.sort_order), 0) || 0) + 10,
     ...row,
+    // 価格は非公開の列なので、管理者用の価格取得（ws_get_prices）から入れる
+    price_1kg: row ? prices[row.id]?.base_1kg ?? null : null,
+    price_sh400: row ? prices[row.id]?.base_sh400 ?? null : null,
   }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');

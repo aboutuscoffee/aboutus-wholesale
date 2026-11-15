@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchCustomerPrices, fetchCustomers, fetchOrders, saveCustomerPrices, updateCustomer, updateOrder } from '../lib/db';
+import { fetchCustomerPrices, fetchCustomers, fetchOrders, fetchResetRequests, markResetHandled, saveCustomerPrices, sendPasswordResetEmail, updateCustomer, updateOrder } from '../lib/db';
 import { yen } from '../i18n';
 import { OrderItems, STATUS_STYLE } from './AccountPanel';
 
@@ -112,6 +112,21 @@ function CustomerDetail({ customer, beans, orders, t, onChange, onBack }) {
       <div className="flex flex-wrap gap-2">
         {draft.status !== 'approved' && <button type="button" onClick={() => save({ status: 'approved' })} className="rounded-full bg-ink px-4 py-2 text-sm text-white">承認する</button>}
         {draft.status === 'approved' && draft.role !== 'admin' && <button type="button" onClick={() => save({ status: 'suspended' })} className="rounded-full px-4 py-2 text-sm ring-1 ring-cream-line">取引を停止</button>}
+        <button
+          type="button"
+          onClick={async () => {
+            setMsg('');
+            try {
+              await sendPasswordResetEmail(draft.email);
+              setMsg(`${draft.email} にパスワード再設定メールを送りました`);
+            } catch (e) {
+              setMsg(e.message);
+            }
+          }}
+          className="rounded-full px-4 py-2 text-sm ring-1 ring-cream-line"
+        >
+          パスワード再設定メールを送る
+        </button>
       </div>
 
       <section className="grid gap-2.5 sm:grid-cols-2">
@@ -181,15 +196,30 @@ export default function AdminPanel({ t, beans, onClose, onPendingCount }) {
   const [statusFilter, setStatusFilter] = useState('active');
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState('');
+  const [requests, setRequests] = useState([]);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    Promise.all([fetchOrders(), fetchCustomers()])
-      .then(([o, c]) => { setOrders(o); setCustomers(c); })
+    Promise.all([fetchOrders(), fetchCustomers(), fetchResetRequests()])
+      .then(([o, c, r]) => { setOrders(o); setCustomers(c); setRequests(r); })
       .catch((e) => setError(e.message));
   }, []);
 
+  // パスワード再設定の依頼：登録済みのメールか・店名が一致するかを見て、本人確認できたら再設定メールを送る
+  const handleRequest = async (req, send) => {
+    setNotice('');
+    try {
+      if (send) await sendPasswordResetEmail(req.email);
+      await markResetHandled(req.id);
+      setRequests((list) => list.filter((x) => x.id !== req.id));
+      setNotice(send ? `${req.email} に再設定メールを送りました` : '依頼を対応済みにしました');
+    } catch (e) {
+      setNotice(e.message);
+    }
+  };
+
   const byId = useMemo(() => Object.fromEntries(customers.map((c) => [c.id, c])), [customers]);
-  const pending = customers.filter((c) => c.status === 'pending').length;
+  const pending = customers.filter((c) => c.status === 'pending').length + requests.length;
   const newOrders = orders.filter((o) => o.status === 'received').length;
   useEffect(() => onPendingCount?.(pending + newOrders), [pending, newOrders, onPendingCount]);
 
@@ -204,7 +234,7 @@ export default function AdminPanel({ t, beans, onClose, onPendingCount }) {
           <button type="button" onClick={onClose} aria-label={t.close} className="flex h-9 w-9 items-center justify-center rounded-full text-xl hover:bg-cream-deep">×</button>
         </header>
         <div className="flex gap-1 border-b border-cream-line px-5 pt-3 text-sm">
-          {[['orders', `注文${newOrders ? `（新着 ${newOrders}）` : ''}`], ['customers', `取引先${pending ? `（承認待ち ${pending}）` : ''}`]].map(([k, label]) => (
+          {[['orders', `注文${newOrders ? `（新着 ${newOrders}）` : ''}`], ['customers', `取引先${pending ? `（対応待ち ${pending}）` : ''}`]].map(([k, label]) => (
             <button key={k} type="button" onClick={() => { setTab(k); setSelected(null); }} className={`-mb-px border-b-2 px-3 py-2 ${tab === k ? 'border-ink font-medium' : 'border-transparent text-ink-mute'}`}>{label}</button>
           ))}
         </div>
@@ -228,6 +258,36 @@ export default function AdminPanel({ t, beans, onClose, onPendingCount }) {
               )}
             </>
           )}
+
+          {tab === 'customers' && !selected && requests.length > 0 && (
+            <section className="mb-5 rounded-2xl bg-gold/10 p-4">
+              <h3 className="mb-1 text-sm font-medium">パスワード再設定の依頼（{requests.length}件）</h3>
+              <p className="mb-3 text-xs text-ink-mute">登録済みのメールアドレスか、店名が合っているかを確認してから送ってください。必要なら電話などでご本人確認を。</p>
+              <ul className="space-y-2">
+                {requests.map((r) => {
+                  const match = customers.find((c) => c.email.toLowerCase() === r.email.toLowerCase());
+                  return (
+                    <li key={r.id} className="rounded-xl bg-white p-3 text-sm ring-1 ring-cream-line">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="font-medium">{r.shop_name}</span>
+                        <span className="text-xs text-ink-mute">{r.email}</span>
+                        <span className="text-xs text-ink-mute">{new Date(r.created_at).toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      </div>
+                      <div className={`mt-1 text-xs ${match ? 'text-[#4c6b44]' : 'text-rust'}`}>
+                        {match ? `登録あり：${match.shop_name}（${match.contact_name} / ${match.phone}）` : 'このメールアドレスの登録はありません'}
+                      </div>
+                      {r.message && <div className="mt-1 whitespace-pre-line text-xs text-ink-soft">{r.message}</div>}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {match && <button type="button" onClick={() => handleRequest(r, true)} className="rounded-full bg-ink px-3 py-1.5 text-xs text-white">本人確認OK・再設定メールを送る</button>}
+                        <button type="button" onClick={() => handleRequest(r, false)} className="rounded-full px-3 py-1.5 text-xs ring-1 ring-cream-line">送らずに対応済みにする</button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+          {notice && <p className="mb-3 text-sm text-sea-deep">{notice}</p>}
 
           {tab === 'customers' && !selected && (
             customers.length === 0 ? <p className="py-10 text-center text-sm text-ink-mute">まだ登録はありません</p> : (

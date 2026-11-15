@@ -1,6 +1,7 @@
 import BeanVisual from './BeanVisual';
 import { RankBadge, LabelBadges } from './Badges';
 import StrongHoldOption from './StrongHoldOption';
+import LockedPrice from './LockedPrice';
 import { yen } from '../i18n';
 
 export default function BeanCard({ bean, media, t, lang, onOpen, onQuickAdd, onAddSh400, admin, onEdit }) {
@@ -59,8 +60,14 @@ export default function BeanCard({ bean, media, t, lang, onOpen, onQuickAdd, onA
             <div className="text-[11px] text-ink-mute">
               {`${t.wholesale1kg}（${t.exTax}）`}
             </div>
-            {bean.special != null && <div className="text-[11px] text-rust">{t.special} <span className="text-ink-mute line-through">{yen(bean.special)}</span></div>}
-            <div className="font-serif text-2xl font-semibold tracking-tight text-ink">{yen(price)}</div>
+            {bean.locked ? (
+              <div className="my-1"><LockedPrice t={t} pending={bean.pending} /></div>
+            ) : (
+              <>
+                {bean.special != null && <div className="text-[11px] text-rust">{t.special} <span className="text-ink-mute line-through">{yen(bean.special)}</span></div>}
+                <div className="font-serif text-2xl font-semibold tracking-tight text-ink">{yen(price)}</div>
+              </>
+            )}
             <div className={`text-[11px] ${soldOut ? 'text-rust' : 'text-ink-mute'}`}>
               {t.stock} {soldOut ? t.soldOut : bean.stock.text || '—'}
             </div>
@@ -71,14 +78,16 @@ export default function BeanCard({ bean, media, t, lang, onOpen, onQuickAdd, onA
                 編集
               </button>
             )}
-            <button
-              type="button"
-              disabled={soldOut || !price}
-              onClick={onQuickAdd}
-              className="rounded-full bg-ink px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-sea-deep disabled:cursor-not-allowed disabled:bg-cream-line disabled:text-ink-mute"
-            >
-              {soldOut ? t.soldOut : `+ ${t.addShort}`}
-            </button>
+            {!bean.locked && (
+              <button
+                type="button"
+                disabled={soldOut || !price}
+                onClick={onQuickAdd}
+                className="rounded-full bg-ink px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-sea-deep disabled:cursor-not-allowed disabled:bg-cream-line disabled:text-ink-mute"
+              >
+                {soldOut ? t.soldOut : `+ ${t.addShort}`}
+              </button>
+            )}
           </div>
         </div>
       </div>

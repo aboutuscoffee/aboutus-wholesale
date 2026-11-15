@@ -3,6 +3,7 @@ import BeanVisual from './BeanVisual';
 import { RankBadge, LabelBadges } from './Badges';
 import { optionsFor, yen } from '../i18n';
 import StrongHoldOption from './StrongHoldOption';
+import LockedPrice from './LockedPrice';
 
 function Spec({ label, value }) {
   if (!value) return null;
@@ -130,6 +131,10 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
               </div>
             )}
 
+            {bean.locked ? (
+              <div className="mt-6"><LockedPrice t={t} pending={bean.pending} size="lg" /></div>
+            ) : (
+            <>
             <div className="mt-6 overflow-hidden rounded-2xl bg-white ring-1 ring-cream-line">
               <div className="border-b border-cream-line px-4 py-3 text-sm font-medium">{t.priceTable}</div>
               <table className="w-full text-sm">
@@ -190,6 +195,8 @@ export default function BeanDetail({ bean, media, t, lang, onClose, onAdd }) {
                 </button>
               </div>
             </div>
+            </>
+            )}
           </div>
         </div>
       </div>

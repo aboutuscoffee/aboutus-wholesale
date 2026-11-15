@@ -1,6 +1,7 @@
 import BeanVisual from './BeanVisual';
 import { RankBadge, LabelBadges } from './Badges';
 import StrongHoldOption from './StrongHoldOption';
+import LockedPrice from './LockedPrice';
 import { yen } from '../i18n';
 
 // 一覧性重視の1行表示。PCでは表形式、スマホでは2段の詰めた行になる
@@ -69,20 +70,26 @@ export default function BeanRow({ bean, media, t, onOpen, onQuickAdd, onAddSh400
         <div className={`text-xs lg:text-right lg:text-sm ${soldOut ? 'text-rust' : 'text-ink-soft'}`}>
           <span className="lg:hidden">{t.stock} </span>{soldOut ? t.soldOut : bean.stock.text || '—'}
         </div>
+        {bean.locked ? (
+          <div className="ml-auto text-right lg:ml-0"><LockedPrice t={t} pending={bean.pending} /></div>
+        ) : (
         <div className="ml-auto text-right lg:ml-0">
           {bean.special != null && <div className="text-[10px] text-rust">{t.special} <span className="text-ink-mute line-through">{yen(bean.special)}</span></div>}
           <div className="font-serif text-xl font-semibold leading-none text-ink">{yen(price)}</div>
           <div className="mt-0.5 text-[10px] text-ink-mute">{`/kg ${t.exTax}`}</div>
         </div>
+        )}
         <div className="flex flex-col items-end gap-1">
-          <button
-            type="button"
-            disabled={soldOut || !price}
-            onClick={onQuickAdd}
-            className="whitespace-nowrap rounded-full bg-ink px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-sea-deep disabled:cursor-not-allowed disabled:bg-cream-line disabled:text-ink-mute"
-          >
-            {soldOut ? t.soldOut : `+ ${t.addShort}`}
-          </button>
+          {!bean.locked && (
+            <button
+              type="button"
+              disabled={soldOut || !price}
+              onClick={onQuickAdd}
+              className="whitespace-nowrap rounded-full bg-ink px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-sea-deep disabled:cursor-not-allowed disabled:bg-cream-line disabled:text-ink-mute"
+            >
+              {soldOut ? t.soldOut : `+ ${t.addShort}`}
+            </button>
+          )}
           {admin && (
             <button type="button" onClick={onEdit} className="text-[11px] text-rust underline">編集</button>
           )}

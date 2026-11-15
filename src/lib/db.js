@@ -1,8 +1,16 @@
 import { supabase } from './supabase';
 
 // 卸カタログの豆データ（ws_beans）。初期データは scripts/seed.sql（スプレッドシートの表示列から作成）
+// 価格（price_1kg / price_sh400）はデータベース側で非公開。価格は fetchPrices() で取得する
+const BEAN_COLUMNS = [
+  'id', 'sort_order', 'country', 'country_ja', 'is_blend', 'rank', 'labels', 'name', 'subtitle', 'process', 'producer',
+  'region', 'altitude', 'variety', 'components', 'crop', 'roast', 'flavor', 'story', 'stock', 'sold_out', 'info_card',
+  'image_urls', 'catch_ja', 'catch_en', 'description_ja', 'description_en', 'sample_available', 'featured', 'hidden',
+  'updated_at', 'store_bean_id',
+].join(',');
+
 export async function fetchBeans() {
-  const { data, error } = await supabase.from('ws_beans').select('*').order('sort_order');
+  const { data, error } = await supabase.from('ws_beans').select(BEAN_COLUMNS).order('sort_order');
   if (error) throw new Error(error.message);
   return data ?? [];
 }
@@ -38,7 +46,7 @@ export async function saveBean(row) {
   const { data, error } = await supabase
     .from('ws_beans')
     .upsert({ ...rest, updated_at: new Date().toISOString() })
-    .select()
+    .select(BEAN_COLUMNS)
     .single();
   if (error) throw new Error(error.message);
   return data;
@@ -123,6 +131,43 @@ export async function updateCustomer(id, fields) {
   const { data, error } = await supabase.from('ws_customers').update(fields).eq('id', id).select().single();
   if (error) throw new Error(error.message);
   return data;
+}
+
+// 承認済みの取引先には特別価格を反映した価格、管理者には通常価格。未ログイン・承認前は空
+export async function fetchPrices() {
+  const { data, error } = await supabase.rpc('ws_get_prices');
+  if (error) {
+    console.warn('価格の読み込みに失敗:', error.message);
+    return {};
+  }
+  return Object.fromEntries((data ?? []).map((p) => [p.bean_id, p]));
+}
+
+// パスワードを忘れた取引先からの依頼（お店が本人確認してから再設定メールを送る）
+export async function requestPasswordReset(email, shop_name, message) {
+  const { error } = await supabase.from('ws_reset_requests').insert({ email, shop_name, message });
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchResetRequests() {
+  const { data, error } = await supabase.from('ws_reset_requests').select('*').eq('handled', false).order('created_at');
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function markResetHandled(id) {
+  const { error } = await supabase.from('ws_reset_requests').update({ handled: true }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function sendPasswordResetEmail(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: APP_URL });
+  if (error) throw new Error(error.message);
+}
+
+export async function updatePassword(password) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw new Error(error.message);
 }
 
 export async function fetchCustomerPrices(customerId) {
