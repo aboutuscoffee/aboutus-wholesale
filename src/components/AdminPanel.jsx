@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { fetchCustomerPrices, fetchCustomers, fetchOrders, fetchResetRequests, markResetHandled, saveCustomerPrices, sendPasswordResetEmail, updateCustomer, updateOrder } from '../lib/db';
 import { yen } from '../i18n';
 import { OrderItems, STATUS_STYLE } from './AccountPanel';
+import WeeklySummary from './WeeklySummary';
 
 const input = 'w-full rounded-xl border border-cream-line bg-white px-3 py-2 text-sm text-ink';
 const ORDER_STATUSES = ['received', 'confirmed', 'shipped', 'cancelled'];
@@ -233,14 +234,23 @@ export default function AdminPanel({ t, beans, onClose, onPendingCount }) {
           <h2 className="font-serif text-2xl font-semibold">管理</h2>
           <button type="button" onClick={onClose} aria-label={t.close} className="flex h-9 w-9 items-center justify-center rounded-full text-xl hover:bg-cream-deep">×</button>
         </header>
-        <div className="flex gap-1 border-b border-cream-line px-5 pt-3 text-sm">
-          {[['orders', `注文${newOrders ? `（新着 ${newOrders}）` : ''}`], ['customers', `取引先${pending ? `（対応待ち ${pending}）` : ''}`]].map(([k, label]) => (
+        <div className="no-scrollbar flex gap-1 overflow-x-auto whitespace-nowrap border-b border-cream-line px-5 pt-3 text-sm">
+          {[['orders', `注文${newOrders ? `（新着 ${newOrders}）` : ''}`], ['weekly', '週ごとの集計・発送CSV'], ['customers', `取引先${pending ? `（対応待ち ${pending}）` : ''}`]].map(([k, label]) => (
             <button key={k} type="button" onClick={() => { setTab(k); setSelected(null); }} className={`-mb-px border-b-2 px-3 py-2 ${tab === k ? 'border-ink font-medium' : 'border-transparent text-ink-mute'}`}>{label}</button>
           ))}
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {error && <p className="mb-3 text-sm text-rust">{error}</p>}
+
+          {tab === 'weekly' && (
+            <WeeklySummary
+              t={t}
+              orders={orders}
+              customers={customers}
+              onOrdersChange={(updated) => setOrders((list) => list.map((x) => updated.find((u) => u.id === x.id) ?? x))}
+            />
+          )}
 
           {tab === 'orders' && (
             <>
